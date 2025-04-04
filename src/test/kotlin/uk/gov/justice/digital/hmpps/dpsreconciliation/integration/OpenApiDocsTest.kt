@@ -1,4 +1,4 @@
-package uk.gov.justice.digital.hmpps.templatepackagename.integration
+package uk.gov.justice.digital.hmpps.dpsreconciliation.integration
 
 import io.swagger.v3.parser.OpenAPIV3Parser
 import net.minidev.json.JSONArray
