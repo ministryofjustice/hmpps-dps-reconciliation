@@ -1,0 +1,20 @@
+hmpps.sqs:
+  provider: localstack
+  queues:
+    reconciliation:
+      queueName: ${random.uuid}
+      dlqName: ${random.uuid}
+      subscribeTopicId: domainevents
+      subscribeFilter: >-
+        { "eventType":[
+          "EXTERNAL_MOVEMENT_RECORD-INSERTED",
+          "prisoner-offender-search.prisoner.received" ,
+          "prisoner-offender-search.prisoner.released"
+        ]}
+
+  topics:
+    domainevents:
+      arn: arn:aws:sns:eu-west-2:000000000000:hmpps_domain_events
+
+    offenderevents:
+      arn: arn:aws:sns:eu-west-2:000000000000:hmpps_offender_events

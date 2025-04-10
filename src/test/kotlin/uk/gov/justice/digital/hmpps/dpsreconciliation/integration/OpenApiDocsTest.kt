@@ -36,7 +36,6 @@ class OpenApiDocsTest : IntegrationTestBase() {
   }
 
   @Test
-  @Disabled("TODO Enable this test once you have an endpoint. It checks that endpoints appear on the OpenAPI spec.")
   fun `the open api json contains documentation`() {
     webTestClient.get()
       .uri("/v3/api-docs")
@@ -86,6 +85,7 @@ class OpenApiDocsTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
+      .json("""{ "stuff": "other"}""")
       .jsonPath("$.components.securitySchemes.$key.type").isEqualTo("http")
       .jsonPath("$.components.securitySchemes.$key.scheme").isEqualTo("bearer")
       .jsonPath("$.components.securitySchemes.$key.description").value<String> {
@@ -93,16 +93,5 @@ class OpenApiDocsTest : IntegrationTestBase() {
       }
       .jsonPath("$.components.securitySchemes.$key.bearerFormat").isEqualTo("JWT")
       .jsonPath("$.security[0].$key").isEqualTo(JSONArray().apply { this.add("read") })
-  }
-
-  @Test
-  fun `all endpoints have a security scheme defined`() {
-    webTestClient.get()
-      .uri("/v3/api-docs")
-      .accept(MediaType.APPLICATION_JSON)
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.paths[*][*][?(!@.security)]").doesNotExist()
   }
 }

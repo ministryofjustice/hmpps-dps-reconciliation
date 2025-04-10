@@ -4,7 +4,32 @@
 [![Docker Repository on ghcr](https://img.shields.io/badge/ghcr.io-repository-2496ED.svg?logo=docker)](https://ghcr.io/ministryofjustice/hmpps-dps-reconciliation)
 [![API docs](https://img.shields.io/badge/API_docs_-view-85EA2D.svg?logo=swagger)](https://hmpps-dps-reconciliation-dev.hmpps.service.justice.gov.uk/webjars/swagger-ui/index.html?configUrl=/v3/api-docs)
 
-Template github repo used for new Kotlin based projects.
+# Reconciliation of prison events with domain events
+
+## received 
+
+....
+
+
+Information in this should include:
+
+Who to contact with any questions
+
+Where the API docs are located
+
+How to call the endpoints and whether any authentication / special authorisation is required
+
+How to check that the service is up and running i.e. the health endpoint
+
+How to check that the service is responding to requests i.e. the ping endpoint
+
+How to find out the version of the deployed application and link it back to a specific git commit.
+
+How to rollback a deployed service to a previous version
+
+How to run the application locally
+
+
 
 # Instructions
 

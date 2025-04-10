@@ -1,2 +1,17 @@
 hmpps-auth:
   url: "http://localhost:8090/auth"
+
+spring:
+  datasource:
+    url: 'jdbc:postgresql://localhost:5432/reconciliation?sslmode=prefer'
+    username: reconciliation
+    password: reconciliation
+    hikari:
+      pool-name: RECON-DB-CP
+  #      maximum-pool-size: 10
+  #      connection-timeout: 30000
+  #      validation-timeout: 5000
+  flyway:
+    url: jdbc:postgresql://localhost:5432/reconciliation?sslmode=prefer
+    user: reconciliation
+    password: reconciliation
