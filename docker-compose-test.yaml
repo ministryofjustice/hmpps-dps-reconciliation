@@ -1,0 +1,29 @@
+services:
+  localstack:
+    image: localstack/localstack:3
+    networks:
+      - hmpps
+    container_name: localstack-recon
+    restart: unless-stopped
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs,sns
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+
+  postgres:
+    image: postgres:17
+    networks:
+      - hmpps
+    container_name: db-recon
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=reconciliation
+      - POSTGRES_USER=reconciliation
+      - POSTGRES_DB=reconciliation
+
+networks:
+  hmpps:

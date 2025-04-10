@@ -7,3 +7,41 @@ management.endpoint:
 
 hmpps-auth:
   url: "http://localhost:8090/auth"
+
+hmpps.sqs:
+  provider: localstack
+  queues:
+    reconciliation:
+      queueName: "visit-${random.uuid}"
+      dlqName: "visit-dlq-${random.uuid}"
+      subscribeTopicId: domainevents
+      subscribeFilter: >-
+        { "eventType":[
+          "EXTERNAL_MOVEMENT_RECORD-INSERTED",
+          "prisoner-offender-search.prisoner.received" ,
+          "prisoner-offender-search.prisoner.released"
+        ]}
+      dlqMaxReceiveCount: 1
+      visibilityTimeout: 10
+
+  topics:
+    domainevents:
+      arn: arn:aws:sns:eu-west-2:000000000000:hmpps_domain_events
+
+    offenderevents:
+      arn: arn:aws:sns:eu-west-2:000000000000:hmpps_offender_events
+
+spring:
+  datasource:
+    url: 'jdbc:postgresql://localhost:5432/reconciliation?sslmode=prefer'
+    username: reconciliation
+    password: reconciliation
+    hikari:
+      pool-name: RECON-DB-CP
+  #      maximum-pool-size: 10
+  #      connection-timeout: 30000
+  #      validation-timeout: 5000
+  flyway:
+    url: jdbc:postgresql://localhost:5432/reconciliation?sslmode=prefer
+    user: reconciliation
+    password: reconciliation

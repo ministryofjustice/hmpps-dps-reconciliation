@@ -24,6 +24,20 @@ spring:
           hmpps-auth:
             token-uri: ${hmpps-auth.url}/oauth/token
 
+  datasource:
+    url: 'jdbc:postgresql://${DATABASE_ENDPOINT}/${DATABASE_NAME}?sslmode=verify-full'
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      pool-name: RECON-DB-CP
+#      maximum-pool-size: 10
+#      connection-timeout: 30000
+#      validation-timeout: 5000
+
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://${DATABASE_ENDPOINT}/${DATABASE_NAME}?sslmode=verify-full
+
 server:
   port: 8080
   servlet:
