@@ -1,8 +1,10 @@
 package uk.gov.justice.digital.hmpps.dpsreconciliation.config
 
+import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Contact
 import io.swagger.v3.oas.models.info.Info
+import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
 import io.swagger.v3.oas.models.servers.Server
 import org.springframework.boot.info.BuildProperties
@@ -28,14 +30,21 @@ class OpenApiConfiguration(buildProperties: BuildProperties) {
     )
     .info(
       Info().title("HMPPS Dps Reconciliation").version(version)
+        .description("Reconciles prison and domain events")
         .contact(Contact().name("HMPPS Digital Studio").email("feedback@digital.justice.gov.uk")),
     )
-  // TODO Add security schema and roles in `.components()` and `.addSecurityItem()`
+    .components(
+      Components().addSecuritySchemes(
+        "bearer-jwt",
+        SecurityScheme().addBearerJwtRequirement(),
+      ),
+    )
+    .addSecurityItem(SecurityRequirement().addList("bearer-jwt", listOf("read", "write")))
 }
 
-private fun SecurityScheme.addBearerJwtRequirement(role: String): SecurityScheme = type(SecurityScheme.Type.HTTP)
+private fun SecurityScheme.addBearerJwtRequirement(): SecurityScheme = type(SecurityScheme.Type.HTTP)
   .scheme("bearer")
   .bearerFormat("JWT")
   .`in`(SecurityScheme.In.HEADER)
   .name("Authorization")
-  .description("A HMPPS Auth access token with the `$role` role.")
+  .description("An HMPPS Auth access token.")

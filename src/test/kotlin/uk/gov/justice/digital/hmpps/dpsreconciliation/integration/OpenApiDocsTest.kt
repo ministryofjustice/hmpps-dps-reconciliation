@@ -76,22 +76,25 @@ class OpenApiDocsTest : IntegrationTestBase() {
   }
 
   @ParameterizedTest
-  @Disabled("TODO Enable this test once you have added security schema to OpenApiConfiguration.OpenAPi().components(). Add the security scheme / roles to @CsvSource")
-  @CsvSource(value = ["security-scheme-name, ROLE_"])
-  fun `the security scheme is setup for bearer tokens`(key: String, role: String) {
+  @CsvSource(value = ["bearer-jwt"])
+  fun `the security scheme is setup for bearer tokens`(key: String) {
     webTestClient.get()
       .uri("/v3/api-docs")
       .accept(MediaType.APPLICATION_JSON)
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .json("""{ "stuff": "other"}""")
       .jsonPath("$.components.securitySchemes.$key.type").isEqualTo("http")
       .jsonPath("$.components.securitySchemes.$key.scheme").isEqualTo("bearer")
       .jsonPath("$.components.securitySchemes.$key.description").value<String> {
-        assertThat(it).contains(role)
+        assertThat(it).contains("An HMPPS Auth access token.")
       }
       .jsonPath("$.components.securitySchemes.$key.bearerFormat").isEqualTo("JWT")
-      .jsonPath("$.security[0].$key").isEqualTo(JSONArray().apply { this.add("read") })
+      .jsonPath("$.security[0].$key").isEqualTo(
+        JSONArray().apply {
+          this.add("read")
+          this.add("write")
+        },
+      )
   }
 }

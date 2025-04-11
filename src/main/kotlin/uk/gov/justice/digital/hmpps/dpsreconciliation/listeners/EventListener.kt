@@ -6,14 +6,14 @@ import io.awspring.cloud.sqs.annotation.SqsListener
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
 import java.util.concurrent.CompletableFuture
 
 @Service
 class EventListener(
   val objectMapper: ObjectMapper,
-  // telemetryClient: TelemetryClient,
+  val receiveService: ReceiveService,
 ) {
-
   private companion object {
     val log: Logger = LoggerFactory.getLogger(this::class.java)
   }
@@ -27,10 +27,11 @@ class EventListener(
         "Notification" -> {
           val eventType = sqsMessage.MessageAttributes!!.eventType.Value
           when (eventType) {
-            "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> TODO()
+            "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> receiveService.movementReceived(sqsMessage.Message.fromJson())
 
-            "prisoner-offender-search.prisoner.received" -> TODO()
-            "prisoner-offender-search.prisoner.released" -> TODO() //  service.doCheckEtc(sqsMessage.Message.fromJson())
+            "prisoner-offender-search.prisoner.received" -> receiveService.prisonerReceived(sqsMessage.Message.fromJson())
+            // "prisoner-offender-search.prisoner.released" -> receiveService.doCheckEtc(sqsMessage.Message.fromJson())
+
             else -> log.info("Received a message I wasn't expecting {}", eventType)
           }
         }
