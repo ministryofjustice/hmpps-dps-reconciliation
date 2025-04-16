@@ -29,7 +29,7 @@ dependencies {
 // Leaving at 1.43.0 to match the version used in App Insights https://github.com/microsoft/ApplicationInsights-Java/blob/3.6.2/dependencyManagement/build.gradle.kts#L14
   implementation("io.opentelemetry:opentelemetry-extension-kotlin:1.49.0")
   // Leaving at 2.9.0 to match the version used in App Insights https://github.com/microsoft/ApplicationInsights-Java/blob/3.6.2/dependencyManagement/build.gradle.kts#L16
-  implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.14.0")
+  implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.15.0")
 
   testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:1.4.2")
   testImplementation("io.swagger.parser.v3:swagger-parser:2.1.26") {
@@ -40,7 +40,7 @@ dependencies {
   testImplementation("com.amazonaws:aws-java-sdk-core:1.12.782")
   testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
   testImplementation("org.testcontainers:postgresql")
-  testImplementation("io.mockk:mockk:1.13.17")
+  testImplementation("io.mockk:mockk:1.14.0")
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 }
 
