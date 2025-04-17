@@ -21,6 +21,8 @@ generic-service:
     host: app-hostname.local # override per environment
     tlsSecretName: hmpps-dps-reconciliation-cert
 
+  serviceAccountName: hmpps-dps-reconciliation
+
   # Environment variables to load into the deployment
   env:
     JAVA_OPTS: "-Xmx512m"
