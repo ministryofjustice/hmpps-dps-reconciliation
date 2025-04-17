@@ -32,6 +32,8 @@ generic-service:
       APPLICATIONINSIGHTS_CONNECTION_STRING: "APPLICATIONINSIGHTS_CONNECTION_STRING"
     hmpps-dps-reconciliation-queue:
       HMPPS_SQS_QUEUES_RECONCILIATION_QUEUE_NAME: "sqs_name"
+    hmpps-dps-reconciliation-dl-queue:
+      HMPPS_SQS_QUEUES_RECONCILIATION_DLQ_NAME: "sqs_name"
     rds-database:
       SPRING_FLYWAY_USER: "database_username"
       SPRING_FLYWAY_PASSWORD: "database_password"
