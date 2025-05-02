@@ -18,9 +18,9 @@ object PostgresContainer {
     log.info("Creating a Postgres database")
     return PostgreSQLContainer<Nothing>("postgres").apply {
       withEnv("HOSTNAME_EXTERNAL", "localhost")
-      withDatabaseName("migration_int_db")
-      withUsername("migration")
-      withPassword("migration")
+      withDatabaseName("reconciliation_db")
+      withUsername("reconciliation")
+      withPassword("reconciliation")
       setWaitStrategy(Wait.forListeningPort())
       withReuse(false)
 

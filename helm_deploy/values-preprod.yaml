@@ -11,6 +11,11 @@ generic-service:
     APPLICATIONINSIGHTS_CONFIGURATION_FILE: "applicationinsights.dev.json"
     HMPPS_AUTH_URL: "https://sign-in-preprod.hmpps.service.justice.gov.uk/auth"
 
+  scheduledDowntime:
+    enabled: true
+    startup: '30 7 * * 1-5' # Start at 7:30am UTC Monday-Friday
+    shutdown: '30 19 * * 1-5' # Stop at 7:30pm UTC Monday-Friday
+
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
 # See https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html#creating-your-own-custom-alerts
 generic-prometheus-alerts:

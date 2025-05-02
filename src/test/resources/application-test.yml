@@ -33,7 +33,7 @@ hmpps.sqs:
 
 spring:
   datasource:
-    url: 'jdbc:postgresql://localhost:5432/reconciliation?sslmode=prefer'
+    url: 'jdbc:postgresql://localhost:5432/reconciliation_db?sslmode=prefer'
     username: reconciliation
     password: reconciliation
     hikari:
@@ -42,6 +42,6 @@ spring:
   #      connection-timeout: 30000
   #      validation-timeout: 5000
   flyway:
-    url: jdbc:postgresql://localhost:5432/reconciliation?sslmode=prefer
+    url: jdbc:postgresql://localhost:5432/reconciliation_db?sslmode=prefer
     user: reconciliation
     password: reconciliation
