@@ -23,7 +23,7 @@ services:
     environment:
       - POSTGRES_PASSWORD=reconciliation
       - POSTGRES_USER=reconciliation
-      - POSTGRES_DB=reconciliation
+      - POSTGRES_DB=reconciliation_db
 
 networks:
   hmpps:
