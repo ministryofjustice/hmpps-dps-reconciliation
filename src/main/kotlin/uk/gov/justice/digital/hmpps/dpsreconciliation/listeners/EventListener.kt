@@ -27,9 +27,9 @@ class EventListener(
         "Notification" -> {
           val eventType = sqsMessage.MessageAttributes!!.eventType.Value
           when (eventType) {
-            "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> receiveService.movementReceived(sqsMessage.Message.fromJson())
+            "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> receiveService.externalMovementHandler(sqsMessage.Message.fromJson())
 
-            "prisoner-offender-search.prisoner.received" -> receiveService.prisonerReceived(sqsMessage.Message.fromJson())
+            "prisoner-offender-search.prisoner.received" -> receiveService.prisonerDomainHandler(sqsMessage.Message.fromJson())
             // "prisoner-offender-search.prisoner.released" -> receiveService.doCheckEtc(sqsMessage.Message.fromJson())
 
             else -> log.info("Received a message I wasn't expecting {}", eventType)

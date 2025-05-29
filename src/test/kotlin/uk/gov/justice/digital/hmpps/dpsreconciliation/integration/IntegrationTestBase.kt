@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.LocalStackContainer.setLocalStackProperties
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import uk.gov.justice.hmpps.sqs.HmppsQueue
 import uk.gov.justice.hmpps.sqs.HmppsQueueService
 import uk.gov.justice.hmpps.sqs.countAllMessagesOnQueue
@@ -33,6 +34,9 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ActiveProfiles("test")
 abstract class IntegrationTestBase {
+
+  @Autowired
+  protected lateinit var repository: MatchingEventPairRepository
 
   @Autowired
   protected lateinit var webTestClient: WebTestClient
@@ -54,11 +58,12 @@ abstract class IntegrationTestBase {
 
   @BeforeEach
   fun setUp() {
+    reconciliationQueue.purge()
     Awaitility.setDefaultPollDelay(1, TimeUnit.MILLISECONDS)
-    Awaitility.setDefaultPollInterval(10, TimeUnit.MILLISECONDS)
     reset(telemetryClient)
-    reconciliationQueue.purgeAndWait()
     Awaitility.setDefaultPollInterval(50, TimeUnit.MILLISECONDS)
+    repository.deleteAll()
+    reconciliationQueue.wait()
   }
 
   internal fun setAuthorisation(
@@ -112,13 +117,19 @@ internal fun SqsAsyncClient.waitForMessageCountOnQueue(queueUrl: String, message
 internal fun String.purgeQueueRequest() = PurgeQueueRequest.builder().queueUrl(this).build()
 private fun SqsAsyncClient.purgeQueue(queueUrl: String?) = purgeQueue(queueUrl?.purgeQueueRequest())
 
-private fun HmppsQueue.purgeAndWait() {
-  sqsClient.purgeQueue(queueUrl).get().also {
-    await untilCallTo { sqsClient.countAllMessagesOnQueue(queueUrl).get() } matches { it == 0 }
-  }
+private fun HmppsQueue.purge() {
+  sqsClient.purgeQueue(queueUrl).get()
+  sqsDlqClient?.run { purgeQueue(dlqUrl).get() }
+}
+
+private fun HmppsQueue.wait() {
+  await untilCallTo { sqsClient.countAllMessagesOnQueue(queueUrl).get() } matches { it == 0 }
   sqsDlqClient?.run {
-    purgeQueue(dlqUrl).get().also {
-      await untilCallTo { this.countAllMessagesOnQueue(dlqUrl!!).get() } matches { it == 0 }
-    }
+    await untilCallTo { this.countAllMessagesOnQueue(dlqUrl!!).get() } matches { it == 0 }
   }
+}
+
+private fun HmppsQueue.purgeAndWait() {
+  this.purge()
+  this.wait()
 }
