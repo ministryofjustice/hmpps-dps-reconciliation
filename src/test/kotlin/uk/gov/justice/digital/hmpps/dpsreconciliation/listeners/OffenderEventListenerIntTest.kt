@@ -1,6 +1,5 @@
 package uk.gov.justice.digital.hmpps.dpsreconciliation.listeners
 
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.groups.Tuple
 import org.awaitility.kotlin.await
@@ -28,7 +27,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
   lateinit var receiveServiceSpyBean: ReceiveService
 
   @Test
-  fun `will process an offender event message`() = runTest {
+  fun `will process an offender event message`() {
     val bookingId = 12345L
     val offenderNo = "A1234AA"
 
@@ -91,7 +90,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `will match a previous domain event message`() = runTest {
+  fun `will match a previous domain event message`() {
     val bookingId = 12345L
     val offenderNo = "A1234AA"
 

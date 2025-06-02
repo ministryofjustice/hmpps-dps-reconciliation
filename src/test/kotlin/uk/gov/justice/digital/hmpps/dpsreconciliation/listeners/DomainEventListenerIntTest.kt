@@ -1,6 +1,5 @@
 package uk.gov.justice.digital.hmpps.dpsreconciliation.listeners
 
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.groups.Tuple
 import org.awaitility.kotlin.await
@@ -30,7 +29,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
   lateinit var receiveServiceSpyBean: ReceiveService
 
   @Test
-  fun `will process a prisoner received event`() = runTest {
+  fun `will process a prisoner received event`() {
     val prisonerNumber = "A7089FD"
 
     awsSqsReconciliationClient.sendMessage(
@@ -79,7 +78,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `will match a previous external movement event`() = runTest {
+  fun `will match a previous external movement event`() {
     val prisonerNumber = "A7089FD"
 
     awsSqsReconciliationClient.sendMessage(

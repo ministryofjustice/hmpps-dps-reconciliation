@@ -37,7 +37,7 @@ class ReceiveService(
   | order by TimeGenerated asc
    */
 
-  suspend fun externalMovementHandler(message: ExternalPrisonerMovementMessage) {
+  fun externalMovementHandler(message: ExternalPrisonerMovementMessage) {
     log.debug("externalMovementHandler {}", message)
 
     val previousMovement: Movement? = null // TODO findPreviousMovement(message)
@@ -60,7 +60,6 @@ class ReceiveService(
                 offenderReceivedTime = message.movementDateTime
                 offenderBookingId = message.bookingId
                 matched = true
-                repository.save(this)
               }
             } else {
               repository.save(
@@ -86,7 +85,7 @@ class ReceiveService(
     telemetryClient.trackEvent("offender-event-received", objectMapper.convertValue<Map<String, String>>(message))
   }
 
-//  private suspend fun findPreviousMovement(message: ExternalPrisonerMovementMessage): Movement? {
+//  private fun findPreviousMovement(message: ExternalPrisonerMovementMessage): Movement? {
 //    val movements = prisonApi.getMovementsForOffender(message.offenderIdDisplay!!)
 //      .onEach { it.movementDateTime = it.movementDate?.atTime(it.movementTime) }
 //      .sortedBy { it.movementDateTime }
@@ -151,7 +150,7 @@ class ReceiveService(
     return false
   }
 
-  suspend fun prisonerDomainHandler(message: PrisonerReceiveDomainEvent) {
+  fun prisonerDomainHandler(message: PrisonerReceiveDomainEvent) {
     log.debug("prisonerDomainHandler {}", message)
 
     /*
@@ -195,7 +194,6 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
         domainReceiveReason = message.additionalInformation.reason
         domainReceivedTime = message.occurredAt.toLocalDateTime()
         matched = true
-        repository.save(this)
       }
     } else {
       repository.save(
