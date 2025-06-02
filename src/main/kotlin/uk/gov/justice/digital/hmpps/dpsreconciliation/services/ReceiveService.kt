@@ -38,7 +38,7 @@ class ReceiveService(
    */
 
   suspend fun externalMovementHandler(message: ExternalPrisonerMovementMessage) {
-    log.debug("Prison movement received {}", message)
+    log.debug("externalMovementHandler {}", message)
 
     val previousMovement: Movement? = null // TODO findPreviousMovement(message)
 
@@ -48,42 +48,36 @@ class ReceiveService(
         when (message.directionCode) {
           "IN" -> {
             // Check for a corresponding event
-            if (message.offenderIdDisplay != null && message.movementDateTime != null) {
-              val existing = repository.findByNomsNumberAndDomainReceivedTimeAfterAndMatched(
-                message.offenderIdDisplay,
-                message.movementDateTime.minusMinutes(1), // The domain event will normally arrive after the nomis event
-                false,
-              )
-              existing.forEach {
-//                if (matches(
-//                    message.movementReasonCode,
-//                    message.movementDateTime,
-//                    it.offenderReasonCode,
-//                    it.offenderReceivedTime,
-//                  )
-//                ) {
-//
-//                  it.offenderReasonCode = message.movementReasonCode
-//                  it.offenderReceivedTime = message.movementDateTime
-//                  it.matched = true
-//                }
-                return
-              }
-            }
-            repository.save(
-              MatchingEventPair(
-                matchType = MatchType.RECEIVED,
-                nomsNumber = message.offenderIdDisplay ?: "Unknown",
-                offenderBookingId = message.bookingId,
-                offenderReasonCode = message.movementReasonCode,
-                offenderReceivedTime = message.movementDateTime,
-                previousOffenderReasonCode = previousMovement?.movementReasonCode,
-                previousOffenderReceivedTime = previousMovement?.movementDateTime,
-                previousOffenderDirection = previousMovement?.directionCode,
-                // previousOffenderBookingId = previousMovement?.bookingId, TODO: may not be required
-                // previousOffenderStatus = previous booking status
-              ),
+            val existing = repository.findByNomsNumberAndDomainReceivedTimeAfterAndMatched(
+              message.offenderIdDisplay!!,
+              message.movementDateTime!!.minusHours(2),
+              // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
+              false,
             )
+            if (existing.size == 1) {
+              with(existing[0]) {
+                offenderReasonCode = message.movementReasonCode
+                offenderReceivedTime = message.movementDateTime
+                offenderBookingId = message.bookingId
+                matched = true
+                repository.save(this)
+              }
+            } else {
+              repository.save(
+                MatchingEventPair(
+                  matchType = MatchType.RECEIVED,
+                  nomsNumber = message.offenderIdDisplay,
+                  offenderBookingId = message.bookingId,
+                  offenderReasonCode = message.movementReasonCode,
+                  offenderReceivedTime = message.movementDateTime,
+                  previousOffenderReasonCode = previousMovement?.movementReasonCode,
+                  previousOffenderReceivedTime = previousMovement?.movementDateTime,
+                  previousOffenderDirection = previousMovement?.directionCode,
+                  // previousOffenderBookingId = previousMovement?.bookingId, TODO: may not be required
+                  // previousOffenderStatus = previous booking status
+                ),
+              )
+            }
           }
         }
       }
@@ -158,8 +152,7 @@ class ReceiveService(
   }
 
   suspend fun prisonerDomainHandler(message: PrisonerReceiveDomainEvent) {
-    log.debug("prisonerReceived {}", message)
-    telemetryClient.trackEvent("domain-event-received", emptyMap())
+    log.debug("prisonerDomainHandler {}", message)
 
     /*
     Possible reasons:
@@ -192,13 +185,35 @@ private fun Prisoner.isSomeOtherMovementOut(previousPrisonerSnapshot: Prisoner?)
 private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean = (this?.toLong() ?: Long.MAX_VALUE) < (previousSnapshotBookingId?.toLong() ?: 0)
 
      */
-    repository.save(
-      MatchingEventPair(
-        matchType = MatchType.RECEIVED,
-        nomsNumber = message.additionalInformation.nomsNumber,
-        domainReceiveReason = message.additionalInformation.reason,
-        domainReceivedTime = message.occurredAt.toLocalDateTime(),
-      ),
+    val existing = repository.findByNomsNumberAndOffenderReceivedTimeAfterAndMatched(
+      message.additionalInformation.nomsNumber,
+      message.occurredAt.toLocalDateTime().minusHours(2),
+      false,
+    )
+    if (existing.size == 1) {
+      with(existing[0]) {
+        domainReceiveReason = message.additionalInformation.reason
+        domainReceivedTime = message.occurredAt.toLocalDateTime()
+        matched = true
+        repository.save(this)
+      }
+    } else {
+      repository.save(
+        MatchingEventPair(
+          matchType = MatchType.RECEIVED,
+          nomsNumber = message.additionalInformation.nomsNumber,
+          domainReceiveReason = message.additionalInformation.reason,
+          domainReceivedTime = message.occurredAt.toLocalDateTime(),
+        ),
+      )
+    }
+    telemetryClient.trackEvent(
+      "domain-event-received",
+      mapOf(
+        "occurredAt" to message.occurredAt.toString(),
+        "nomsNumber" to message.additionalInformation.nomsNumber,
+        "reason" to message.additionalInformation.reason.description,
+      ) + (message.additionalInformation.prisonId?.let { mapOf("prisonId" to it) } ?: emptyMap()),
     )
   }
 }

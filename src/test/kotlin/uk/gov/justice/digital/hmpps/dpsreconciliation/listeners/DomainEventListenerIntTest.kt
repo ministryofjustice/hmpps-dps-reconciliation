@@ -9,10 +9,13 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyMap
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
+import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainMessage
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveDomainEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveReason
@@ -74,38 +77,57 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
         ),
       )
   }
+
+  @Test
+  fun `will match a previous external movement event`() = runTest {
+    val prisonerNumber = "A7089FD"
+
+    awsSqsReconciliationClient.sendMessage(
+      SendMessageRequest.builder().queueUrl(reconciliationUrl)
+        .messageBody(validOffenderMessage(prisonerNumber, 101, "EXTERNAL_MOVEMENT_RECORD-INSERTED")).build(),
+    )
+
+    await untilAsserted {
+      verify(telemetryClient).trackEvent(eq("offender-event-received"), anyMap(), isNull())
+    }
+    reset(telemetryClient)
+
+    awsSqsReconciliationClient.sendMessage(
+      SendMessageRequest.builder().queueUrl(reconciliationUrl)
+        .messageBody(validDomainMessage(prisonerNumber, "prisoner-offender-search.prisoner.received")).build(),
+    )
+
+    await untilAsserted {
+      verify(telemetryClient).trackEvent(eq("domain-event-received"), anyMap(), isNull())
+    }
+
+    assertThat(
+      repository.findByNomsNumberAndDomainReceivedTimeAfterAndMatched(
+        prisonerNumber,
+        LocalDateTime.parse("2025-05-01T10:00:00"),
+        true,
+      ),
+    ).extracting(
+      "matchType",
+      "nomsNumber",
+      "domainReceiveReason",
+      "domainReceivedTime",
+      "offenderBookingId",
+      "offenderReasonCode",
+      "offenderReceivedTime",
+      "matched",
+    )
+      .containsExactly(
+        Tuple(
+          MatchType.RECEIVED,
+          prisonerNumber,
+          PrisonerReceiveReason.NEW_ADMISSION,
+          LocalDateTime.parse("2025-05-13T15:38:48"),
+          101L,
+          "REASON",
+          LocalDateTime.parse("2025-05-13T15:38:30"),
+          true,
+        ),
+      )
+  }
 }
-
-private fun validDomainMessageOld(prisonerNumber: String, eventType: String) =
-  """
-    {
-      "Type": "Notification",
-      "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
-      "Message": "{\"eventType\":\"$eventType\", \"description\": \"some desc\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"NEW_ADMISSION\"}}",
-      "MessageAttributes": {
-        "eventType": {
-          "Type": "String",
-          "Value": "$eventType"
-        },
-        "id": {
-          "Type": "String",
-          "Value": "cb4645f2-d0c1-4677-806a-8036ed54bf69"
-        }
-      }
-    }
-  """.trimIndent()
-
-private fun validDomainMessage(prisonerNumber: String, eventType: String) =
-  """
-    {
-      "Type": "Notification",
-      "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
-      "Message": "{\"eventType\":\"$eventType\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"NEW_ADMISSION\",\"prisonId\":\"CFI\"}}",
-      "MessageAttributes": {
-        "eventType": {
-          "Type": "String",
-          "Value": "$eventType"
-        }
-      }
-    }
-  """.trimIndent()

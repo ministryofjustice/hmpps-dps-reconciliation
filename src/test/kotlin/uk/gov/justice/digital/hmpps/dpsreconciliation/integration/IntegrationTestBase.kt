@@ -133,3 +133,42 @@ private fun HmppsQueue.purgeAndWait() {
   this.purge()
   this.wait()
 }
+
+internal fun validOffenderMessage(offenderNo: String, bookingId: Long, eventType: String) = validMessage(
+  eventType = eventType,
+  message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:47\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\", \"nomisEventType\":\"M1_RESULT\",\"movementSeq\":1, \"movementDateTime\":\"2025-05-13T15:38:30\", \"movementType\":\"ADM\", \"movementReasonCode\": \"REASON\", \"directionCode\":\"IN\", \"fromAgencyLocationId\":\"LDM023\",\"toAgencyLocationId\":\"CFI\"}""",
+)
+
+private fun validMessage(eventType: String, message: String) =
+  """
+  {
+    "Type": "Notification",
+    "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
+    "Message": "$message",
+    "MessageAttributes": {
+      "eventType": {
+        "Type": "String",
+        "Value": "$eventType"
+      },
+      "id": {
+        "Type": "String",
+        "Value": "cb4645f2-d0c1-4677-806a-8036ed54bf69"
+      }
+    }
+  }
+  """.trimIndent()
+
+internal fun validDomainMessage(prisonerNumber: String, eventType: String) =
+  """
+    {
+      "Type": "Notification",
+      "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
+      "Message": "{\"eventType\":\"$eventType\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"NEW_ADMISSION\",\"prisonId\":\"CFI\"}}",
+      "MessageAttributes": {
+        "eventType": {
+          "Type": "String",
+          "Value": "$eventType"
+        }
+      }
+    }
+  """.trimIndent()

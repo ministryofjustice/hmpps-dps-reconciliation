@@ -20,7 +20,7 @@ class EventListener(
 
   @SqsListener("reconciliation", factory = "hmppsQueueContainerFactoryProxy")
   fun onMessage(message: String): CompletableFuture<Void?> {
-    log.debug("Received offender event message {}", message)
+    log.debug("Received event message {}", message)
     val sqsMessage: SQSMessage = objectMapper.readValue(message)
     return asCompletableFuture {
       when (sqsMessage.Type) {
