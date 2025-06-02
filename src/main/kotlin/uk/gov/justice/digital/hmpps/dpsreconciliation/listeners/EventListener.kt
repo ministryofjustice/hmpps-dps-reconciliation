@@ -7,7 +7,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
-import java.util.concurrent.CompletableFuture
 
 @Service
 class EventListener(
@@ -19,25 +18,23 @@ class EventListener(
   }
 
   @SqsListener("reconciliation", factory = "hmppsQueueContainerFactoryProxy")
-  fun onMessage(message: String): CompletableFuture<Void?> {
-    log.debug("Received offender event message {}", message)
+  fun onMessage(message: String) {
+    log.debug("Received event message {}", message)
     val sqsMessage: SQSMessage = objectMapper.readValue(message)
-    return asCompletableFuture {
-      when (sqsMessage.Type) {
-        "Notification" -> {
-          val eventType = sqsMessage.MessageAttributes!!.eventType.Value
-          when (eventType) {
-            "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> receiveService.externalMovementHandler(sqsMessage.Message.fromJson())
+    return when (sqsMessage.Type) {
+      "Notification" -> {
+        val eventType = sqsMessage.MessageAttributes!!.eventType.Value
+        when (eventType) {
+          "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> receiveService.externalMovementHandler(sqsMessage.Message.fromJson())
 
-            "prisoner-offender-search.prisoner.received" -> receiveService.prisonerDomainHandler(sqsMessage.Message.fromJson())
-            // "prisoner-offender-search.prisoner.released" -> receiveService.doCheckEtc(sqsMessage.Message.fromJson())
+          "prisoner-offender-search.prisoner.received" -> receiveService.prisonerDomainHandler(sqsMessage.Message.fromJson())
+          // "prisoner-offender-search.prisoner.released" -> receiveService.doCheckEtc(sqsMessage.Message.fromJson())
 
-            else -> log.info("Received a message I wasn't expecting {}", eventType)
-          }
+          else -> log.info("Received a message I wasn't expecting {}", eventType)
         }
-
-        else -> log.info("Received a message I didnt recognise: {}", sqsMessage)
       }
+
+      else -> log.info("Received a message I didnt recognise: {}", sqsMessage)
     }
   }
 

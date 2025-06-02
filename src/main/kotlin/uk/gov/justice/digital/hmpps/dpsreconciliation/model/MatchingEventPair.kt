@@ -25,6 +25,7 @@ data class MatchingEventPair(
 
   val nomsNumber: String,
 
+  @Enumerated(EnumType.STRING)
   var domainReceiveReason: PrisonerReceiveReason? = null,
   var domainReceivedTime: LocalDateTime? = null,
 

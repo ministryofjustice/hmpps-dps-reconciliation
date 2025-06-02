@@ -17,10 +17,6 @@ dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:5.4.5")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
 
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8")
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk9")
-
   runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
   runtimeOnly("org.flywaydb:flyway-core")
   runtimeOnly("org.postgresql:postgresql")
@@ -38,7 +34,6 @@ dependencies {
   testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("io.mockk:mockk:1.14.2")
-  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 }
 
 kotlin {
