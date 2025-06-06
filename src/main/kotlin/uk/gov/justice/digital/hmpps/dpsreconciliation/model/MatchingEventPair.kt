@@ -10,13 +10,11 @@ import jakarta.persistence.Id
 import org.hibernate.Hibernate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Persistable
-import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveReason
 import java.time.LocalDateTime
 
 @Entity
 data class MatchingEventPair(
   @Id
-  // @SequenceGenerator(name = "matching_event_pair_seq", sequenceName = "matching_event_pair_seq", allocationSize = 1)
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   val id: Long = 0,
 
@@ -25,15 +23,14 @@ data class MatchingEventPair(
 
   val nomsNumber: String,
 
-  @Enumerated(EnumType.STRING)
-  var domainReceiveReason: PrisonerReceiveReason? = null,
-  var domainReceivedTime: LocalDateTime? = null,
+  var domainReason: String? = null,
+  var domainTime: LocalDateTime? = null,
 
   var offenderBookingId: Long? = null,
-  var offenderReasonCode: String? = null,
-  var offenderReceivedTime: LocalDateTime? = null,
-  var previousOffenderReasonCode: String? = null,
-  var previousOffenderReceivedTime: LocalDateTime? = null,
+  var offenderReason: String? = null,
+  var offenderTime: LocalDateTime? = null,
+  var previousOffenderReason: String? = null,
+  var previousOffenderTime: LocalDateTime? = null,
   var previousOffenderDirection: String? = null,
 //  var previousOffenderStatus: String? = null,
 //  var previousOffenderBookingId: Long? = null,
