@@ -18,6 +18,7 @@ hmpps.sqs:
       subscribeFilter: >-
         { "eventType":[
           "EXTERNAL_MOVEMENT_RECORD-INSERTED",
+          "EXTERNAL_MOVEMENT-CHANGED",
           "prisoner-offender-search.prisoner.received" ,
           "prisoner-offender-search.prisoner.released"
         ]}

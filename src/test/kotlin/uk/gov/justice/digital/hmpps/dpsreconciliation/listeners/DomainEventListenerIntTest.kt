@@ -13,8 +13,8 @@ import org.mockito.kotlin.verify
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.IntegrationTestBase
-import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainMessage
-import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderMessage
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainReceiveMessage
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderAdmissionMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveDomainEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveReason
@@ -34,7 +34,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
 
     awsSqsReconciliationClient.sendMessage(
       SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validDomainMessage(prisonerNumber, "prisoner-offender-search.prisoner.received")).build(),
+        .messageBody(validDomainReceiveMessage(prisonerNumber)).build(),
     )
 
     await untilAsserted {
@@ -45,7 +45,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
       )
     }
 
-    verify(receiveServiceSpyBean).prisonerDomainHandler(
+    verify(receiveServiceSpyBean).prisonerDomainReceiveHandler(
       eq(
         PrisonerReceiveDomainEvent(
           additionalInformation = ReceivePrisonerAdditionalInformationEvent(
@@ -58,19 +58,20 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
       ),
     )
 
-    val actual = repository.findByNomsNumberAndDomainReceivedTimeAfterAndMatched(
+    val actual = repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
       prisonerNumber,
+      MatchType.RECEIVED,
       LocalDateTime.parse("2025-05-01T10:00:00"),
       false,
     )
     assertThat(
       actual,
-    ).extracting("matchType", "nomsNumber", "domainReceiveReason", "domainReceivedTime", "matched")
+    ).extracting("matchType", "nomsNumber", "domainReason", "domainTime", "matched")
       .containsExactly(
         Tuple(
           MatchType.RECEIVED,
           prisonerNumber,
-          PrisonerReceiveReason.NEW_ADMISSION,
+          "NEW_ADMISSION",
           LocalDateTime.parse("2025-05-13T15:38:48"),
           false,
         ),
@@ -83,7 +84,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
 
     awsSqsReconciliationClient.sendMessage(
       SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validOffenderMessage(prisonerNumber, 101, "EXTERNAL_MOVEMENT_RECORD-INSERTED")).build(),
+        .messageBody(validOffenderAdmissionMessage(prisonerNumber, 101)).build(),
     )
 
     await untilAsserted {
@@ -93,7 +94,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
 
     awsSqsReconciliationClient.sendMessage(
       SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validDomainMessage(prisonerNumber, "prisoner-offender-search.prisoner.received")).build(),
+        .messageBody(validDomainReceiveMessage(prisonerNumber)).build(),
     )
 
     await untilAsserted {
@@ -101,26 +102,27 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
     }
 
     assertThat(
-      repository.findByNomsNumberAndDomainReceivedTimeAfterAndMatched(
+      repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
         prisonerNumber,
+        MatchType.RECEIVED,
         LocalDateTime.parse("2025-05-01T10:00:00"),
         true,
       ),
     ).extracting(
       "matchType",
       "nomsNumber",
-      "domainReceiveReason",
-      "domainReceivedTime",
+      "domainReason",
+      "domainTime",
       "offenderBookingId",
-      "offenderReasonCode",
-      "offenderReceivedTime",
+      "offenderReason",
+      "offenderTime",
       "matched",
     )
       .containsExactly(
         Tuple(
           MatchType.RECEIVED,
           prisonerNumber,
-          PrisonerReceiveReason.NEW_ADMISSION,
+          "NEW_ADMISSION",
           LocalDateTime.parse("2025-05-13T15:38:48"),
           101L,
           "REASON",
