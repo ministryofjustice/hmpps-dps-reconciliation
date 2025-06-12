@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional
 import uk.gov.justice.digital.hmpps.dpsreconciliation.config.trackEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
-import uk.gov.justice.digital.hmpps.dpsreconciliation.model.Movement
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -18,6 +17,7 @@ import java.time.OffsetDateTime
 @Service
 @Transactional
 class ReceiveService(
+  val prisonApi: PrisonApi,
   val telemetryClient: TelemetryClient,
   val repository: MatchingEventPairRepository,
   val objectMapper: ObjectMapper,
@@ -40,11 +40,25 @@ class ReceiveService(
   fun externalMovementHandler(message: ExternalPrisonerMovementMessage) {
     log.debug("externalMovementHandler {}", message)
 
-    val previousMovement: Movement? = null // TODO findPreviousMovement(message)
+    val movements = prisonApi.getMovementsForBooking(message.bookingId!!)
+
+    val thisMovement = movements.find { it.sequence == message.movementSeq }
+    if (thisMovement?.modifiedDateTime != null) {
+      log.debug("Detected an update when comparing with {}", thisMovement)
+      return
+    }
+
+    val previousMovement: BookingMovement? = findPreviousMovement(
+      message,
+      movements.sortedBy { it.movementDateTime },
+    )
 
     when (message.movementType) {
       "ADM" -> {
-        if (message.directionCode == "IN" && message.movementReasonCode != "INT") {
+        if (message.directionCode == "IN" &&
+          (previousMovement == null || isRelease(previousMovement))
+        ) {
+          // NB: movementReasonCode can be anything - it doesnt indicate whether or not it is a real 'first' entry to prison
           // Check for a corresponding event
           val existing = repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
             message.offenderIdDisplay!!,
@@ -111,18 +125,16 @@ class ReceiveService(
         }
       }
     }
-    telemetryClient.trackEvent("offender-event-received", objectMapper.convertValue<Map<String, String>>(message))
+    telemetryClient.trackEvent("offender-event", objectMapper.convertValue<Map<String, String>>(message))
   }
 
-//  private fun findPreviousMovement(message: ExternalPrisonerMovementMessage): Movement? {
-//    val movements = prisonApi.getMovementsForOffender(message.offenderIdDisplay!!)
-//      .onEach { it.movementDateTime = it.movementDate?.atTime(it.movementTime) }
-//      .sortedBy { it.movementDateTime }
-//
-//    return movements.indexOfFirst { it.movementDateTime == message.movementDateTime }
-//      .takeIf { it > 0 }
-//      ?.let { movements[it - 1] }
-//  }
+  private fun findPreviousMovement(
+    message: ExternalPrisonerMovementMessage,
+    movements: List<BookingMovement>,
+  ): BookingMovement? = movements
+    .indexOfFirst { it.sequence == message.movementSeq }
+    .takeIf { it > 0 }
+    ?.let { movements[it - 1] }
 
   fun matches(
     domainReceiveReason: PrisonerReceiveReason,
@@ -243,9 +255,9 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
           )
         }
         telemetryClient.trackEvent(
-          "domain-event-received",
+          "domain-event",
           mapOf(
-            "type" to MatchType.RELEASED.name,
+            "type" to MatchType.RECEIVED.name,
             "occurredAt" to messageDateTimeLocal.toString(),
             "nomsNumber" to message.additionalInformation.nomsNumber,
             "reason" to message.additionalInformation.reason.name,
@@ -291,7 +303,7 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
           )
         }
         telemetryClient.trackEvent(
-          "domain-event-received",
+          "domain-event",
           mapOf(
             "type" to MatchType.RELEASED.name,
             "occurredAt" to messageDateTimeLocal.toString(),
@@ -309,13 +321,15 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
   }
 }
 
+private fun isRelease(previousMovement: BookingMovement): Boolean = previousMovement.movementType == "REL"
+
 data class ExternalPrisonerMovementMessage(
   val eventType: String?,
   val eventDatetime: LocalDateTime? = null,
   val bookingId: Long? = null,
   val offenderIdDisplay: String? = null,
   val nomisEventType: String? = null,
-  val movementSeq: Long?,
+  val movementSeq: Int?,
   val movementDateTime: LocalDateTime?,
   val movementType: String?,
   val movementReasonCode: String?,

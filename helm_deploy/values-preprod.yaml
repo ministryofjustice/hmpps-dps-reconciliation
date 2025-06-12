@@ -10,6 +10,7 @@ generic-service:
   env:
     APPLICATIONINSIGHTS_CONFIGURATION_FILE: "applicationinsights.dev.json"
     HMPPS_AUTH_URL: "https://sign-in-preprod.hmpps.service.justice.gov.uk/auth"
+    PRISON_API_URL: "https://prison-api-preprod.prison.service.justice.gov.uk"
 
   scheduledDowntime:
     enabled: true
@@ -21,3 +22,7 @@ generic-service:
 generic-prometheus-alerts:
   businessHoursOnly: true
   alertSeverity: syscon-nonprod
+  rdsAlertsDatabases:
+    cloud-platform-ecaa06ca3b89ae46: "DPS reconcilation"
+  sqsNumberAlertQueueNames:
+    - "syscon-devs-preprod-hmpps_dps_reconciliation_dl_queue"

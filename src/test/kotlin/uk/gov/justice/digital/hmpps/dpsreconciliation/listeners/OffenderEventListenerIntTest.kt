@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.groups.Tuple
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyMap
 import org.mockito.kotlin.eq
@@ -17,6 +18,7 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainRec
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainReleaseMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderAdmissionMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderReleaseMessage
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension.Companion.prisonApi
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ExternalPrisonerMovementMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
@@ -27,173 +29,289 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
   @MockitoSpyBean
   lateinit var receiveServiceSpyBean: ReceiveService
 
-  @Test
-  fun `will process an offender event message`() {
-    val bookingId = 12345L
-    val offenderNo = "A1234AA"
+  @Nested
+  inner class Received {
+    @Test
+    fun `will process an offender event message`() {
+      val bookingId = 12345L
+      val offenderNo = "A1234AA"
 
-    awsSqsReconciliationClient.sendMessage(
-      SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
-    )
-
-    await untilAsserted {
-      verify(telemetryClient).trackEvent(
-        eq("offender-event-received"),
-        anyMap(),
-        isNull(),
-      )
+      prisonApi.stubGetMovementsForBooking(
+        12345L,
+        """
+  [ 
+    {
+      "sequence": 1,
+      "fromAgency": "xxxxxx",
+      "toAgency": "xxxxxx",
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC"
+    },
+    {
+      "sequence": 2,
+      "fromAgency": "xxxxxx",
+      "toAgency": "xxxxxx",
+      "movementType": "REL",
+      "directionCode": "OUT",
+      "movementDateTime": "2025-05-30T15:13:15",
+      "movementReasonCode": "LC"
     }
-    verify(receiveServiceSpyBean).externalMovementHandler(
-      eq(
-        ExternalPrisonerMovementMessage(
-          bookingId = bookingId,
-          eventType = "EXTERNAL_MOVEMENT-CHANGED",
-          eventDatetime = LocalDateTime.parse("2025-05-13T15:38:47"),
-          offenderIdDisplay = offenderNo,
-          nomisEventType = "EXTERNAL_MOVEMENT-CHANGED",
-          movementSeq = 1,
-          movementDateTime = LocalDateTime.parse("2025-05-13T15:38:30"),
-          movementType = "ADM",
-          movementReasonCode = "REASON",
-          directionCode = "IN",
-          escortCode = null,
-          fromAgencyLocationId = "LDM023",
-          toAgencyLocationId = "CFI",
-        ),
-      ),
-    )
+  ]
+        """.trimIndent(),
+      )
 
-    assertThat(
-      repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
-        offenderNo,
-        MatchType.RECEIVED,
-        LocalDateTime.parse("2025-05-01T10:00:00"),
-        false,
-      ),
-    ).extracting(
-      "matchType",
-      "nomsNumber",
-      "offenderBookingId",
-      "offenderReason",
-      "offenderTime",
-      "matched",
-    )
-      .containsExactly(
-        Tuple(
-          MatchType.RECEIVED,
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("offender-event"),
+          anyMap(),
+          isNull(),
+        )
+      }
+      verify(receiveServiceSpyBean).externalMovementHandler(
+        eq(
+          ExternalPrisonerMovementMessage(
+            bookingId = bookingId,
+            eventType = "EXTERNAL_MOVEMENT-CHANGED",
+            eventDatetime = LocalDateTime.parse("2025-05-13T15:38:47"),
+            offenderIdDisplay = offenderNo,
+            nomisEventType = "EXTERNAL_MOVEMENT-CHANGED",
+            movementSeq = 1,
+            movementDateTime = LocalDateTime.parse("2025-05-13T15:38:30"),
+            movementType = "ADM",
+            movementReasonCode = "REASON",
+            directionCode = "IN",
+            escortCode = null,
+            fromAgencyLocationId = "LDM023",
+            toAgencyLocationId = "CFI",
+          ),
+        ),
+      )
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
           offenderNo,
-          bookingId,
-          "REASON",
-          LocalDateTime.parse("2025-05-13T15:38:30"),
+          MatchType.RECEIVED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
           false,
         ),
+      ).extracting(
+        "matchType",
+        "nomsNumber",
+        "offenderBookingId",
+        "offenderReason",
+        "offenderTime",
+        "matched",
       )
-  }
-
-  @Test
-  fun `will match a previous domain receive event message`() {
-    val bookingId = 12345L
-    val offenderNo = "A1234AA"
-
-    awsSqsReconciliationClient.sendMessage(
-      SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validDomainReceiveMessage(offenderNo)).build(),
-    )
-    await untilAsserted {
-      verify(telemetryClient).trackEvent(eq("domain-event-received"), anyMap(), isNull())
-    }
-    reset(telemetryClient)
-
-    awsSqsReconciliationClient.sendMessage(
-      SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
-    )
-    await untilAsserted {
-      verify(telemetryClient).trackEvent(eq("offender-event-received"), anyMap(), isNull())
+        .containsExactly(
+          Tuple(
+            MatchType.RECEIVED,
+            offenderNo,
+            bookingId,
+            "REASON",
+            LocalDateTime.parse("2025-05-13T15:38:30"),
+            false,
+          ),
+        )
     }
 
-    assertThat(
-      repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
-        offenderNo,
-        MatchType.RECEIVED,
-        LocalDateTime.parse("2025-05-01T10:00:00"),
-        true,
-      ),
-    ).extracting(
-      "matchType",
-      "nomsNumber",
-      "domainReason",
-      "domainTime",
-      "offenderBookingId",
-      "offenderReason",
-      "offenderTime",
-      "matched",
-    )
-      .containsExactly(
-        Tuple(
+    @Test
+    fun `will not process an ADM event where there is a previous movement`() {
+      val bookingId = 12345L
+      val offenderNo = "A1234AA"
+
+      prisonApi.stubGetMovementsForBooking(
+        12345L,
+        """
+  [ 
+   {
+      "sequence": 0,
+      "movementType": "TRN",
+      "directionCode": "OUT",
+      "movementDateTime": "2025-05-26T12:13:13",
+      "movementReasonCode": "LC"
+    },
+    {
+      "sequence": 1,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC"
+    }
+  ]
+        """.trimIndent(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("offender-event"),
+          anyMap(),
+          isNull(),
+        )
+      }
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
+          offenderNo,
           MatchType.RECEIVED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
+          false,
+        ),
+      ).isEmpty()
+    }
+
+    @Test
+    fun `will match a previous domain receive event message`() {
+      val bookingId = 12345L
+      val offenderNo = "A1234AA"
+
+      prisonApi.stubGetMovementsForBooking(
+        12345L,
+        """
+  [ 
+    {
+      "sequence": 1,
+      "fromAgency": "xxxxxx",
+      "toAgency": "xxxxxx",
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC"
+    }
+  ]
+        """.trimIndent(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validDomainReceiveMessage(offenderNo)).build(),
+      )
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(eq("domain-event"), anyMap(), isNull())
+      }
+      reset(telemetryClient)
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
+      )
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(eq("offender-event"), anyMap(), isNull())
+      }
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
           offenderNo,
-          "NEW_ADMISSION",
-          LocalDateTime.parse("2025-05-13T15:38:48"),
-          bookingId,
-          "REASON",
-          LocalDateTime.parse("2025-05-13T15:38:30"),
+          MatchType.RECEIVED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
           true,
         ),
+      ).extracting(
+        "matchType",
+        "nomsNumber",
+        "domainReason",
+        "domainTime",
+        "offenderBookingId",
+        "offenderReason",
+        "offenderTime",
+        "matched",
       )
+        .containsExactly(
+          Tuple(
+            MatchType.RECEIVED,
+            offenderNo,
+            "NEW_ADMISSION",
+            LocalDateTime.parse("2025-05-13T15:38:48"),
+            bookingId,
+            "REASON",
+            LocalDateTime.parse("2025-05-13T15:38:30"),
+            true,
+          ),
+        )
+    }
   }
 
-  @Test
-  fun `will match a previous domain release event message`() {
-    val bookingId = 12345L
-    val offenderNo = "A1234AA"
+  @Nested
+  inner class Released {
+    @Test
+    fun `will match a previous domain release event message`() {
+      val bookingId = 12345L
+      val offenderNo = "A1234AA"
 
-    awsSqsReconciliationClient.sendMessage(
-      SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validDomainReleaseMessage(offenderNo)).build(),
-    )
-    await untilAsserted {
-      verify(telemetryClient).trackEvent(eq("domain-event-received"), anyMap(), isNull())
+      prisonApi.stubGetMovementsForBooking(
+        12345L,
+        """
+  [ 
+    {
+      "sequence": 1,
+      "fromAgency": "xxxxxx",
+      "toAgency": "xxxxxx",
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC"
     }
-    reset(telemetryClient)
+  ]
+        """.trimIndent(),
+      )
 
-    awsSqsReconciliationClient.sendMessage(
-      SendMessageRequest.builder().queueUrl(reconciliationUrl)
-        .messageBody(validOffenderReleaseMessage(offenderNo, bookingId)).build(),
-    )
-    await untilAsserted {
-      verify(telemetryClient).trackEvent(eq("offender-event-received"), anyMap(), isNull())
-    }
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validDomainReleaseMessage(offenderNo)).build(),
+      )
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(eq("domain-event"), anyMap(), isNull())
+      }
+      reset(telemetryClient)
 
-    assertThat(
-      repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
-        offenderNo,
-        MatchType.RELEASED,
-        LocalDateTime.parse("2025-05-01T10:00:00"),
-        true,
-      ),
-    ).extracting(
-      "matchType",
-      "nomsNumber",
-      "domainReason",
-      "domainTime",
-      "offenderBookingId",
-      "offenderReason",
-      "offenderTime",
-      "matched",
-    )
-      .containsExactly(
-        Tuple(
-          MatchType.RELEASED,
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderReleaseMessage(offenderNo, bookingId)).build(),
+      )
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(eq("offender-event"), anyMap(), isNull())
+      }
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
           offenderNo,
-          "RELEASED",
-          LocalDateTime.parse("2025-05-13T15:38:48"),
-          bookingId,
-          "RELEASED",
-          LocalDateTime.parse("2025-05-13T15:38:30"),
+          MatchType.RELEASED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
           true,
         ),
+      ).extracting(
+        "matchType",
+        "nomsNumber",
+        "domainReason",
+        "domainTime",
+        "offenderBookingId",
+        "offenderReason",
+        "offenderTime",
+        "matched",
       )
+        .containsExactly(
+          Tuple(
+            MatchType.RELEASED,
+            offenderNo,
+            "RELEASED",
+            LocalDateTime.parse("2025-05-13T15:38:48"),
+            bookingId,
+            "RELEASED",
+            LocalDateTime.parse("2025-05-13T15:38:30"),
+            true,
+          ),
+        )
+    }
   }
 }

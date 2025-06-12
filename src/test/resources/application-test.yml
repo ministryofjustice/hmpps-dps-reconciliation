@@ -8,6 +8,13 @@ management.endpoint:
 hmpps-auth:
   url: "http://localhost:8090/auth"
 
+prison-api:
+  url: "http://localhost:8091"
+
+  client:
+    id: prison-api
+    secret: clientsecret
+
 hmpps.sqs:
   provider: localstack
   queues:
@@ -46,3 +53,16 @@ spring:
     url: jdbc:postgresql://localhost:5432/reconciliation_db?sslmode=prefer
     user: reconciliation
     password: reconciliation
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+        show-sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.jdbc: DEBUG
+    org.hibernate.type: TRACE
+    org.hibernate.orm: INFO

@@ -23,6 +23,8 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.LocalStackContainer.setLocalStackProperties
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension.Companion.prisonApi
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import uk.gov.justice.hmpps.sqs.HmppsQueue
 import uk.gov.justice.hmpps.sqs.HmppsQueueService
@@ -30,7 +32,7 @@ import uk.gov.justice.hmpps.sqs.countAllMessagesOnQueue
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
 import java.util.concurrent.TimeUnit
 
-@ExtendWith(HmppsAuthApiExtension::class)
+@ExtendWith(HmppsAuthApiExtension::class, PrisonApiExtension::class)
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ActiveProfiles("test")
 abstract class IntegrationTestBase {
@@ -74,6 +76,7 @@ abstract class IntegrationTestBase {
 
   protected fun stubPingWithResponse(status: Int) {
     hmppsAuth.stubHealthPing(status)
+    prisonApi.stubHealthPing(status)
   }
 
   companion object {
@@ -163,31 +166,31 @@ private fun validMessage(eventType: String, message: String) =
   }
   """.trimIndent()
 
-internal fun validDomainReceiveMessage(prisonerNumber: String, eventType: String = "prisoner-offender-search.prisoner.received", reason: String = "NEW_ADMISSION") =
+internal fun validDomainReceiveMessage(prisonerNumber: String, reason: String = "NEW_ADMISSION") =
   """
     {
       "Type": "Notification",
       "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
-      "Message": "{\"eventType\":\"$eventType\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}",
+      "Message": "{\"eventType\":\"prisoner-offender-search.prisoner.received\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}",
       "MessageAttributes": {
         "eventType": {
           "Type": "String",
-          "Value": "$eventType"
+          "Value": "prisoner-offender-search.prisoner.received"
         }
       }
     }
   """.trimIndent()
 
-internal fun validDomainReleaseMessage(prisonerNumber: String, eventType: String = "prisoner-offender-search.prisoner.released", reason: String = "RELEASED") =
+internal fun validDomainReleaseMessage(prisonerNumber: String, reason: String = "RELEASED") =
   """
     {
       "Type": "Notification",
       "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
-      "Message": "{\"eventType\":\"$eventType\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}",
+      "Message": "{\"eventType\":\"prisoner-offender-search.prisoner.released\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}",
       "MessageAttributes": {
         "eventType": {
           "Type": "String",
-          "Value": "$eventType"
+          "Value": "prisoner-offender-search.prisoner.released"
         }
       }
     }
