@@ -7,8 +7,13 @@ generic-service:
 
   env:
     HMPPS_AUTH_URL: "https://sign-in.hmpps.service.justice.gov.uk/auth"
+    PRISON_API_URL: "https://prison-api.prison.service.justice.gov.uk"
 
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
 # See https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html#creating-your-own-custom-alerts
 generic-prometheus-alerts:
   alertSeverity: syscon
+  rdsAlertsDatabases:
+    cloud-platform-b58b51dd02b491a0: "DPS reconcilation"
+  sqsNumberAlertQueueNames:
+    - "syscon-devs-prod-hmpps_dps_reconciliation_dl_queue"

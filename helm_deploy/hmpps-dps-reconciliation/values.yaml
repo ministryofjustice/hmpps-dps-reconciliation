@@ -43,6 +43,9 @@ generic-service:
       DATABASE_PASSWORD: "database_password"
       DATABASE_NAME: "database_name"
       DATABASE_ENDPOINT: "rds_instance_endpoint"
+    hmpps-dps-reconciliation:
+      PRISON_API_ClIENT_ID: "PRISON_API_ClIENT_ID"
+      PRISON_API_ClIENT_SECRET: "PRISON_API_ClIENT_SECRET"
 
   allowlist:
     groups:
