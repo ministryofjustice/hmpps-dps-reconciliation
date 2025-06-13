@@ -58,11 +58,11 @@ spring:
     properties:
       hibernate:
         format_sql: false
-        show-sql: true
+#        show-sql: true
 
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.jdbc: DEBUG
-    org.hibernate.type: TRACE
-    org.hibernate.orm: INFO
+#logging:
+#  level:
+#    org.hibernate.SQL: DEBUG
+#    org.hibernate.type.descriptor.jdbc: DEBUG
+#    org.hibernate.type: TRACE
+#    org.hibernate.orm: INFO
