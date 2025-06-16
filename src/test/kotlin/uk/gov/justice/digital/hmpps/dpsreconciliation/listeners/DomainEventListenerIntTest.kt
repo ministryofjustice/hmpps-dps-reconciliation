@@ -89,7 +89,20 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
     fun `will match a previous external movement event`() {
       val prisonerNumber = "A7089FD"
 
-      prisonApi.stubGetMovementsForBooking(101, "[]")
+      prisonApi.stubGetMovementsForBooking(
+        101,
+        """
+          [
+       {
+      "sequence": 1,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
+       }]
+        """.trimMargin(),
+      )
 
       awsSqsReconciliationClient.sendMessage(
         SendMessageRequest.builder().queueUrl(reconciliationUrl)
@@ -147,6 +160,21 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will match a previous external movement event`() {
       val prisonerNumber = "A7089FD"
+
+      prisonApi.stubGetMovementsForBooking(
+        101,
+        """
+          [
+       {
+      "sequence": 1,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
+       }]
+        """.trimMargin(),
+      )
 
       awsSqsReconciliationClient.sendMessage(
         SendMessageRequest.builder().queueUrl(reconciliationUrl)
