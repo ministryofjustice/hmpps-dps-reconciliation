@@ -47,7 +47,8 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       "movementType": "ADM",
       "directionCode": "IN",
       "movementDateTime": "2025-05-26T12:13:14",
-      "movementReasonCode": "LC"
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
     },
     {
       "sequence": 2,
@@ -56,7 +57,8 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       "movementType": "REL",
       "directionCode": "OUT",
       "movementDateTime": "2025-05-30T15:13:15",
-      "movementReasonCode": "LC"
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
     }
   ]
         """.trimIndent(),
@@ -135,14 +137,16 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       "movementType": "TRN",
       "directionCode": "OUT",
       "movementDateTime": "2025-05-26T12:13:13",
-      "movementReasonCode": "LC"
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
     },
     {
       "sequence": 1,
       "movementType": "ADM",
       "directionCode": "IN",
       "movementDateTime": "2025-05-26T12:13:14",
-      "movementReasonCode": "LC"
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
     }
   ]
         """.trimIndent(),
@@ -187,7 +191,8 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       "movementType": "ADM",
       "directionCode": "IN",
       "movementDateTime": "2025-05-26T12:13:14",
-      "movementReasonCode": "LC"
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
     }
   ]
         """.trimIndent(),
@@ -260,7 +265,8 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       "movementType": "ADM",
       "directionCode": "IN",
       "movementDateTime": "2025-05-26T12:13:14",
-      "movementReasonCode": "LC"
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
     }
   ]
         """.trimIndent(),

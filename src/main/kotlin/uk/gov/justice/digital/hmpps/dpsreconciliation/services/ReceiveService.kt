@@ -26,25 +26,18 @@ class ReceiveService(
     val log: Logger = LoggerFactory.getLogger(this::class.java)
   }
 
-  /* Can get all event logging info using:
-  AppEvents
-  | where AppRoleName== 'hmpps-domain-event-logger'
-    and Name in ('prisoner-offender-search.prisoner.received')
-  | union (AppEvents
-  | where AppRoleName== 'hmpps-prisoner-events'
-    and Name in ('EXTERNAL_MOVEMENT_RECORD-INSERTED')
-    )
-  | order by TimeGenerated asc
-   */
-
   fun externalMovementHandler(message: ExternalPrisonerMovementMessage) {
     log.debug("externalMovementHandler {}", message)
 
     val movements = prisonApi.getMovementsForBooking(message.bookingId!!)
 
     val thisMovement = movements.find { it.sequence == message.movementSeq }
-    if (thisMovement?.modifiedDateTime != null) {
-      log.debug("Detected an update when comparing with {}", thisMovement)
+    if (thisMovement == null) {
+      throw MovementNotFound("External movement not found for prisoner $message")
+    }
+    if (thisMovement.modifiedDateTime != null && thisMovement.modifiedDateTime != thisMovement.createdDateTime) {
+      // When event is an insert, the modifiedDateTime is either null or modifiedDateTime = createdDateTime
+      log.info("Detected an update in {}", thisMovement)
       return
     }
 
@@ -58,7 +51,7 @@ class ReceiveService(
         if (message.directionCode == "IN" &&
           (previousMovement == null || isRelease(previousMovement))
         ) {
-          // NB: movementReasonCode can be anything - it doesnt indicate whether or not it is a real 'first' entry to prison
+          // NB: movementReasonCode can be anything - it doesn't indicate whether or not it is a real 'first' entry to prison
           // Check for a corresponding event
           val existing = repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
             message.offenderIdDisplay!!,
@@ -74,6 +67,8 @@ class ReceiveService(
               offenderBookingId = message.bookingId
               matched = true
             }
+          } else if (existing.size > 1) {
+            log.warn("Unexpected multiple matches: {}", existing)
           } else {
             repository.save(
               MatchingEventPair(
@@ -107,6 +102,8 @@ class ReceiveService(
             offenderBookingId = message.bookingId
             matched = true
           }
+        } else if (existing.size > 1) {
+          log.warn("Unexpected multiple matches: {}", existing)
         } else {
           repository.save(
             MatchingEventPair(
@@ -320,6 +317,8 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
     }
   }
 }
+
+class MovementNotFound(message: String) : RuntimeException(message)
 
 private fun isRelease(previousMovement: BookingMovement): Boolean = previousMovement.movementType == "REL"
 
