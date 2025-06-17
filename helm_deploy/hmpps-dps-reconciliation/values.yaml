@@ -53,3 +53,6 @@ generic-service:
 
 generic-prometheus-alerts:
   targetApplication: hmpps-dps-reconciliation
+
+cron:
+  retry_dlqs_schedule: "*/10 * * * *"
