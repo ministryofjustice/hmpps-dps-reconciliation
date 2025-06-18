@@ -32,9 +32,8 @@ class ReceiveService(
     val movements = prisonApi.getMovementsForBooking(message.bookingId!!)
 
     val thisMovement = movements.find { it.sequence == message.movementSeq }
-    if (thisMovement == null) {
-      throw MovementNotFound("External movement not found for prisoner $message")
-    }
+      ?: throw MovementNotFound("External movement not found for prisoner $message")
+
     if (thisMovement.modifiedDateTime != null && thisMovement.modifiedDateTime != thisMovement.createdDateTime) {
       // When event is an insert, the modifiedDateTime is either null or modifiedDateTime = createdDateTime
       log.info("Detected an update in {}", thisMovement)
