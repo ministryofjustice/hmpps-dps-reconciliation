@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.convertValue
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uk.gov.justice.digital.hmpps.dpsreconciliation.config.trackEvent
@@ -13,6 +14,7 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.util.concurrent.TimeUnit
 
 @Service
 @Transactional
@@ -51,11 +53,12 @@ class ReceiveService(
           (previousMovement == null || isRelease(previousMovement))
         ) {
           // NB: movementReasonCode can be anything - it doesn't indicate whether or not it is a real 'first' entry to prison
-          // Check for a corresponding event
-          val existing = repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
+          // Also movement datetime can be hours or even days ago when nomis entry is retrospective
+          // Check for a corresponding event by actual event arrival. This should be within minutes unless there is a serious outage
+          val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
             message.offenderIdDisplay!!,
             MatchType.RECEIVED,
-            message.movementDateTime!!.minusHours(2),
+            LocalDateTime.now().minusHours(2),
             // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
             false,
           )
@@ -88,10 +91,10 @@ class ReceiveService(
       }
 
       "REL" -> {
-        val existing = repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
+        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
           message.offenderIdDisplay!!,
           MatchType.RELEASED,
-          message.movementDateTime!!.minusHours(2),
+          LocalDateTime.now().minusHours(2),
           false,
         )
         if (existing.size == 1) {
@@ -122,6 +125,46 @@ class ReceiveService(
       }
     }
     telemetryClient.trackEvent("offender-event", objectMapper.convertValue<Map<String, String>>(message))
+  }
+
+  fun offenderMergeHandler(message: MergeMessage) {
+    log.debug("offenderMergeHandler {}", message)
+    if (message.type == "MERGE") {
+      val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
+        message.offenderIdDisplay!!,
+        MatchType.RECEIVED,
+        LocalDateTime.now().minusHours(2),
+        // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
+        false,
+      )
+      if (existing.size == 1) {
+        with(existing[0]) {
+          offenderReason = "MERGE-EVENT"
+          offenderTime = message.eventDatetime
+          offenderBookingId = message.bookingId
+          matched = true
+        }
+      } else if (existing.size > 1) {
+        log.warn("mergeHandler(): Unexpected multiple matches: {}", existing)
+      } else {
+        repository.save(
+          MatchingEventPair(
+            matchType = MatchType.RECEIVED,
+            nomsNumber = message.offenderIdDisplay,
+            offenderBookingId = message.bookingId,
+            offenderReason = "MERGE-EVENT",
+            offenderTime = message.eventDatetime,
+          ),
+        )
+      }
+      telemetryClient.trackEvent("merge-event", objectMapper.convertValue<Map<String, String>>(message))
+    }
+  }
+
+  @Scheduled(initialDelay = 0, fixedRate = 24, timeUnit = TimeUnit.HOURS)
+  fun purgeOldMatchedRecords() {
+    val rows = repository.deleteByCreatedDateIsBeforeAndMatched(createdDate = LocalDateTime.now().minusDays(14), matched = true)
+    telemetryClient.trackEvent("database-purge", mapOf("deleted-rows" to rows.toString()))
   }
 
   private fun findPreviousMovement(
@@ -226,12 +269,12 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
       PrisonerReceiveReason.NEW_ADMISSION,
       PrisonerReceiveReason.READMISSION,
       PrisonerReceiveReason.READMISSION_SWITCH_BOOKING,
-      PrisonerReceiveReason.POST_MERGE_ADMISSION,
+      PrisonerReceiveReason.POST_MERGE_ADMISSION, // will match with a merge event, not a movement
       -> {
-        val existing = repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
+        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
           message.additionalInformation.nomsNumber,
           MatchType.RECEIVED,
-          messageDateTimeLocal.minusHours(2),
+          LocalDateTime.now().minusHours(2),
           false,
         )
         if (existing.size == 1) {
@@ -276,10 +319,10 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
       PrisonerReleaseReason.RELEASED,
       PrisonerReleaseReason.RELEASED_TO_HOSPITAL,
       -> {
-        val existing = repository.findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(
+        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
           message.additionalInformation.nomsNumber,
           MatchType.RELEASED,
-          messageDateTimeLocal.minusHours(2),
+          LocalDateTime.now().minusHours(2),
           false,
         )
         if (existing.size == 1) {
@@ -288,6 +331,8 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
             domainTime = messageDateTimeLocal
             matched = true
           }
+        } else if (existing.size > 1) {
+          log.warn("Unexpected multiple matches: {}", existing)
         } else {
           repository.save(
             MatchingEventPair(
@@ -335,6 +380,17 @@ data class ExternalPrisonerMovementMessage(
   val escortCode: String?,
   val fromAgencyLocationId: String?,
   val toAgencyLocationId: String?,
+)
+
+data class MergeMessage(
+  val eventType: String?,
+  val eventDatetime: LocalDateTime? = null,
+  val bookingId: Long? = null,
+  val offenderIdDisplay: String? = null,
+  val offenderId: Long? = null,
+  val previousBookingNumber: String? = null,
+  val previousOffenderIdDisplay: String? = null,
+  val type: String? = null, // should be MERGE
 )
 
 data class PrisonerReceiveDomainEvent(

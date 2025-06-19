@@ -147,6 +147,11 @@ internal fun validOffenderReleaseMessage(offenderNo: String, bookingId: Long, ev
   message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:47\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\", \"nomisEventType\":\"EXTERNAL_MOVEMENT-CHANGED\",\"movementSeq\":1, \"movementDateTime\":\"2025-05-13T15:38:30.0Z\", \"movementType\":\"REL\", \"movementReasonCode\": \"RELEASED\", \"directionCode\":\"OUT\", \"fromAgencyLocationId\":\"CFI\",\"toAgencyLocationId\":\"OUT\"}""",
 )
 
+internal fun validOffenderMergeMessage(offenderNo: String, bookingId: Long, eventType: String = "BOOKING_NUMBER-CHANGED") = validMessage(
+  eventType = eventType,
+  message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:56\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\",\"offenderId\":\"5383902\",\"type\":\"MERGE\",\"nomisEventType\":\"BOOK_UPD_OASYS\",\"previousOffenderIdDisplay\":\"A9220FG\",\"previousBookingNumber\":\"V24071\"}""",
+)
+
 private fun validMessage(eventType: String, message: String) =
   """
   {

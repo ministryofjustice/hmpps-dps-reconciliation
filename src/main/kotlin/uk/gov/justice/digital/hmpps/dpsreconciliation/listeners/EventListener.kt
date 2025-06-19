@@ -31,6 +31,9 @@ class EventListener(
           "EXTERNAL_MOVEMENT-CHANGED" -> receiveService.externalMovementHandler(sqsMessage.Message.fromJson())
           // Always fires but fiddly to tell insert from update
 
+          "BOOKING_NUMBER-CHANGED" -> receiveService.offenderMergeHandler(sqsMessage.Message.fromJson())
+          // matches with a receive event
+
           "prisoner-offender-search.prisoner.received" -> receiveService.prisonerDomainReceiveHandler(sqsMessage.Message.fromJson())
           "prisoner-offender-search.prisoner.released" -> receiveService.prisonerDomainReleaseHandler(sqsMessage.Message.fromJson())
 
