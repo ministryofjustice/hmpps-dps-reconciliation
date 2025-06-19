@@ -10,4 +10,7 @@ import java.time.LocalDateTime
 interface MatchingEventPairRepository : CrudRepository<MatchingEventPair, Long> {
   fun findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(nomsNumber: String, matchType: MatchType, domainTime: LocalDateTime, matched: Boolean): List<MatchingEventPair>
   fun findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(nomsNumber: String, matchType: MatchType, offenderTime: LocalDateTime, matched: Boolean): List<MatchingEventPair>
+  fun findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(nomsNumber: String, matchType: MatchType, createdDate: LocalDateTime, matched: Boolean): List<MatchingEventPair>
+  fun findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(nomsNumber: String, matchType: MatchType, createdDate: LocalDateTime, matched: Boolean): List<MatchingEventPair>
+  fun deleteByCreatedDateIsBeforeAndMatched(createdDate: LocalDateTime, matched: Boolean): Int
 }
