@@ -14,8 +14,8 @@ generic-service:
 
   scheduledDowntime:
     enabled: true
-    startup: '0 8 * * 1-5'
-    shutdown: '0 18 * * 1-5'
+    startup: '50 7 * * 1-5'
+    shutdown: '0 18 * * 1-5' # UTC
 
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
 # See https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html#creating-your-own-custom-alerts
@@ -28,4 +28,4 @@ generic-prometheus-alerts:
     - "syscon-devs-dev-hmpps_dps_reconciliation_dl_queue"
 
 cron:
-  retry_dlqs_schedule: "*/10 8-18 * * 1-5"
+  retry_dlqs_schedule: "*/10 8-17 * * 1-5" # UTC
