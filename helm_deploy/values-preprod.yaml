@@ -14,7 +14,7 @@ generic-service:
 
   scheduledDowntime:
     enabled: true
-    startup: '50 7 * * 1-5'
+    startup: '50 6 * * 1-5'
     shutdown: '0 18 * * 1-5' # UTC
 
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
