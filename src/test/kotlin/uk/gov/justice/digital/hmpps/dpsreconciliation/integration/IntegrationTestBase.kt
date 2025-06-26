@@ -142,9 +142,9 @@ internal fun validOffenderAdmissionMessage(offenderNo: String, bookingId: Long, 
   message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:47\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\", \"nomisEventType\":\"EXTERNAL_MOVEMENT-CHANGED\",\"movementSeq\":1, \"movementDateTime\":\"2025-05-13T15:38:30\", \"movementType\":\"ADM\", \"movementReasonCode\": \"REASON\", \"directionCode\":\"IN\", \"fromAgencyLocationId\":\"LDM023\",\"toAgencyLocationId\":\"CFI\"}""",
 )
 
-internal fun validOffenderReleaseMessage(offenderNo: String, bookingId: Long, eventType: String = "EXTERNAL_MOVEMENT-CHANGED") = validMessage(
+internal fun validOffenderReleaseMessage(offenderNo: String, bookingId: Long, movementSeq: Int = 1, eventType: String = "EXTERNAL_MOVEMENT-CHANGED") = validMessage(
   eventType = eventType,
-  message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:47\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\", \"nomisEventType\":\"EXTERNAL_MOVEMENT-CHANGED\",\"movementSeq\":1, \"movementDateTime\":\"2025-05-13T15:38:30.0Z\", \"movementType\":\"REL\", \"movementReasonCode\": \"RELEASED\", \"directionCode\":\"OUT\", \"fromAgencyLocationId\":\"CFI\",\"toAgencyLocationId\":\"OUT\"}""",
+  message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:47\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\", \"nomisEventType\":\"EXTERNAL_MOVEMENT-CHANGED\",\"movementSeq\":$movementSeq, \"movementDateTime\":\"2025-05-13T15:38:30.0Z\", \"movementType\":\"REL\", \"movementReasonCode\": \"RELEASED\", \"directionCode\":\"OUT\", \"fromAgencyLocationId\":\"CFI\",\"toAgencyLocationId\":\"OUT\"}""",
 )
 
 internal fun validOffenderMergeMessage(offenderNo: String, bookingId: Long, eventType: String = "BOOKING_NUMBER-CHANGED") = validMessage(
@@ -171,32 +171,17 @@ private fun validMessage(eventType: String, message: String) =
   }
   """.trimIndent()
 
-internal fun validDomainReceiveMessage(prisonerNumber: String, reason: String = "NEW_ADMISSION") =
-  """
-    {
-      "Type": "Notification",
-      "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
-      "Message": "{\"eventType\":\"prisoner-offender-search.prisoner.received\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}",
-      "MessageAttributes": {
-        "eventType": {
-          "Type": "String",
-          "Value": "prisoner-offender-search.prisoner.received"
-        }
-      }
-    }
-  """.trimIndent()
+internal fun validDomainReceiveMessage(prisonerNumber: String, reason: String = "NEW_ADMISSION") = validMessage(
+  "prisoner-offender-search.prisoner.received",
+  """{\"eventType\":\"prisoner-offender-search.prisoner.received\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}""",
+)
 
-internal fun validDomainReleaseMessage(prisonerNumber: String, reason: String = "RELEASED") =
-  """
-    {
-      "Type": "Notification",
-      "MessageId": "20e13002-d1be-56e7-be8c-66cdd7e23341",
-      "Message": "{\"eventType\":\"prisoner-offender-search.prisoner.released\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}",
-      "MessageAttributes": {
-        "eventType": {
-          "Type": "String",
-          "Value": "prisoner-offender-search.prisoner.released"
-        }
-      }
-    }
-  """.trimIndent()
+internal fun validDomainReleaseMessage(prisonerNumber: String, reason: String = "RELEASED") = validMessage(
+  "prisoner-offender-search.prisoner.released",
+  """{\"eventType\":\"prisoner-offender-search.prisoner.released\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}""",
+)
+
+internal fun validDomainRPRemovedMessage(prisonerNumber: String) = validMessage(
+  "restricted-patients.patient.removed",
+  """{\"eventType\":\"restricted-patients.patient.removed\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"prisonerNumber\":\"$prisonerNumber\"}}""",
+)

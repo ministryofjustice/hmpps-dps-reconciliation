@@ -19,7 +19,6 @@ data class Movement(
   val directionCode: String? = null,
   val movementDate: LocalDate? = null,
   val movementTime: LocalTime? = null,
-  // var movementDateTime: LocalDateTime? = null,
   val movementReason: String? = null,
   val movementReasonCode: String? = null,
   val commentText: String? = null,

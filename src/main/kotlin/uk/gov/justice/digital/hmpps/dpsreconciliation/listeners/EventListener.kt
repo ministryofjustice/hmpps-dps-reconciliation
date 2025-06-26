@@ -26,7 +26,7 @@ class EventListener(
         val eventType = sqsMessage.MessageAttributes!!.eventType.Value
         when (eventType) {
           "EXTERNAL_MOVEMENT_RECORD-INSERTED" -> null
-          // Ignore - Not all movements (only is_hmps_booking(), i.e. active booking or TRN) . in particular ADMs missing as they are initially OUT
+          // Ignore - Not all movements (only is_hmps_booking(), i.e. active booking or TRN). In particular ADMs missing as they are initially OUT
 
           "EXTERNAL_MOVEMENT-CHANGED" -> receiveService.externalMovementHandler(sqsMessage.Message.fromJson())
           // Always fires but fiddly to tell insert from update
@@ -36,6 +36,9 @@ class EventListener(
 
           "prisoner-offender-search.prisoner.received" -> receiveService.prisonerDomainReceiveHandler(sqsMessage.Message.fromJson())
           "prisoner-offender-search.prisoner.released" -> receiveService.prisonerDomainReleaseHandler(sqsMessage.Message.fromJson())
+
+          "restricted-patients.patient.removed" -> receiveService.restrictedPatientRemovedHandler(sqsMessage.Message.fromJson())
+          // matches with an REL external movement
 
           else -> log.info("Received a message I wasn't expecting {}", eventType)
         }
