@@ -237,7 +237,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
   @Nested
   inner class RPRemoved {
     @Test
-    fun `will match a previous release  external movement event`() {
+    fun `will match a previous release external movement event`() {
       val prisonerNumber = "A7089FD"
 
       prisonApi.stubGetMovementsForBooking(
