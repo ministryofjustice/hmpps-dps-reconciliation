@@ -15,6 +15,7 @@ import org.mockito.kotlin.verify
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainRPRemovedMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainReceiveMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validDomainReleaseMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderAdmissionMessage
@@ -223,6 +224,91 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             MatchType.RELEASED,
             prisonerNumber,
             "RELEASED",
+            LocalDateTime.parse("2025-05-13T15:38:48"),
+            101L,
+            "RELEASED",
+            LocalDateTime.parse("2025-05-13T15:38:30"),
+            true,
+          ),
+        )
+    }
+  }
+
+  @Nested
+  inner class RPRemoved {
+    @Test
+    fun `will match a previous release  external movement event`() {
+      val prisonerNumber = "A7089FD"
+
+      prisonApi.stubGetMovementsForBooking(
+        101,
+        """
+      [{
+        "sequence": 1,
+        "movementType": "REL",
+        "directionCode": "OUT",
+        "movementDateTime": "2025-05-26T12:13:14",
+        "movementReasonCode": "HP",
+        "createdDateTime":  "2025-05-26T12:13:15"
+       },
+       {
+        "sequence": 2,
+        "movementType": "REL",
+        "directionCode": "OUT",
+        "movementDateTime": "2025-05-26T12:13:14",
+        "movementReasonCode": "CP",
+        "createdDateTime":  "2025-05-26T12:13:16"
+       }]
+        """.trimMargin(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderReleaseMessage(prisonerNumber, 101, 2)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(eq("offender-event"), anyMap(), isNull())
+      }
+      reset(telemetryClient)
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validDomainRPRemovedMessage(prisonerNumber)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("restricted-patient-event"),
+          check {
+            assertThat(it["type"]).isEqualTo("RELEASED")
+          },
+          isNull(),
+        )
+      }
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
+          prisonerNumber,
+          MatchType.RELEASED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
+          true,
+        ),
+      ).extracting(
+        "matchType",
+        "nomsNumber",
+        "domainReason",
+        "domainTime",
+        "offenderBookingId",
+        "offenderReason",
+        "offenderTime",
+        "matched",
+      )
+        .containsExactly(
+          Tuple(
+            MatchType.RELEASED,
+            prisonerNumber,
+            "REMOVED_FROM_HOSPITAL",
             LocalDateTime.parse("2025-05-13T15:38:48"),
             101L,
             "RELEASED",

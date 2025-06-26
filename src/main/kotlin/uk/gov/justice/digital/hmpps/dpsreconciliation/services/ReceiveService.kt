@@ -52,7 +52,7 @@ class ReceiveService(
         if (message.directionCode == "IN" &&
           (previousMovement == null || isRelease(previousMovement))
         ) {
-          // NB: movementReasonCode can be anything - it doesn't indicate whether or not it is a real 'first' entry to prison
+          // NB: movementReasonCode can be anything - it doesn't indicate whether it is a real 'first' entry to prison
           // Also movement datetime can be hours or even days ago when nomis entry is retrospective
           // Check for a corresponding event by actual event arrival. This should be within minutes unless there is a serious outage
           val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
@@ -163,7 +163,10 @@ class ReceiveService(
 
   @Scheduled(initialDelay = 0, fixedRate = 24, timeUnit = TimeUnit.HOURS)
   fun purgeOldMatchedRecords() {
-    val rows = repository.deleteByCreatedDateIsBeforeAndMatched(createdDate = LocalDateTime.now().minusDays(14), matched = true)
+    val rows = repository.deleteByCreatedDateIsBeforeAndMatched(
+      createdDate = LocalDateTime.now().minusDays(14),
+      matched = true,
+    )
     telemetryClient.trackEvent("database-purge", mapOf("deleted-rows" to rows.toString()))
   }
 
@@ -175,95 +178,9 @@ class ReceiveService(
     .takeIf { it > 0 }
     ?.let { movements[it - 1] }
 
-  fun matches(
-    domainReceiveReason: PrisonerReceiveReason,
-    domainReceivedTime: LocalDateTime,
-    offenderReasonCode: String,
-    offenderReceivedTime: LocalDateTime,
-  ): Boolean {
-    when (domainReceiveReason) {
-      PrisonerReceiveReason.NEW_ADMISSION ->
-        /*
-           private fun Prisoner.isNewAdmission(previousPrisonerSnapshot: Prisoner?) = this.lastMovementTypeCode == "ADM" &&
-          this.status == "ACTIVE IN" &&
-          this.bookingId != previousPrisonerSnapshot?.bookingId
-         OR
-          private fun Prisoner.isNewAdmissionDueToMoveBooking(previousPrisonerSnapshot: Prisoner?) =
-          previousPrisonerSnapshot?.bookingId == null && this.status == "ACTIVE IN"
-         */
-        null
-
-      PrisonerReceiveReason.READMISSION ->
-        /*
-           private fun Prisoner.isReadmission(previousPrisonerSnapshot: Prisoner?) = this.lastMovementTypeCode == "ADM" &&
-            this.bookingId == previousPrisonerSnapshot?.bookingId &&
-            this.status == "ACTIVE IN" &&
-            previousPrisonerSnapshot?.status == "INACTIVE OUT"
-         */
-        null
-
-      PrisonerReceiveReason.READMISSION_SWITCH_BOOKING ->
-        /*
-          private fun Prisoner.isReadmissionSwitchBooking(previousPrisonerSnapshot: Prisoner?) = this.lastMovementTypeCode == "ADM" &&
-            previousPrisonerSnapshot?.bookingId != null &&
-            this.bookingId != previousPrisonerSnapshot.bookingId &&
-            this.bookingId.isBookingBefore(previousPrisonerSnapshot.bookingId) &&
-            this.status == "ACTIVE IN" &&
-            previousPrisonerSnapshot.status == "INACTIVE OUT"
-         */
-        null
-
-      PrisonerReceiveReason.POST_MERGE_ADMISSION ->
-        /*
-          isNewAdmission(previousPrisonerSnapshot) && isAdmissionAssociatedWithAMerge
-       AND
-            private fun isAdmissionAssociatedWithAMerge(offenderBooking: OffenderBooking): Boolean = offenderBooking.identifiersForActiveOffender("MERGED")
-
-  // check the merge is after the admission movement - or if there is no movement then check the merge happened in the last 90 minutes
-  ?.any { it.whenCreated > maxOf(offenderBooking.lastMovementTime ?: LocalDateTime.MIN, LocalDateTime.now().minusMinutes(90)) }
-  ?: false
-         */
-        null
-
-      else -> null
-    }
-    return false
-  }
-
   fun prisonerDomainReceiveHandler(message: PrisonerReceiveDomainEvent) {
     log.debug("prisonerDomainReceiveHandler {}", message)
 
-    /*
-    Possible reasons:
-      NEW_ADMISSION - admission on new charges
-      READMISSION - re-admission on an existing booking
-      READMISSION_SWITCH_BOOKING - re-admission on an existing previous booking - typically after a new booking is created by mistake
-      TRANSFERRED - transfer from another prison - inoutstatus = TRN
-      RETURN_FROM_COURT - returned back to prison from court
-      TEMPORARY_ABSENCE_RETURN - returned after a temporary absence
-      POST_MERGE_ADMISSION - admission following an offender merge
-
-Tests from prisoner-search PrisonerMovementsEventService:
------
-
-private fun Prisoner.isRelease(previousPrisonerSnapshot: Prisoner?) = this.lastMovementTypeCode == "REL" &&
-  this.status == "INACTIVE OUT" &&
-  previousPrisonerSnapshot?.active == true
-
-private fun Prisoner.isReleaseToHospital(previousPrisonerSnapshot: Prisoner?) = this.lastMovementTypeCode == "REL" &&
-  this.lastMovementReasonCode == "HP" &&
-  this.status == "INACTIVE OUT" &&
-  previousPrisonerSnapshot?.active == true
-
-private fun Prisoner.isSomeOtherMovementIn(previousPrisonerSnapshot: Prisoner?) = this.inOutStatus == "IN" &&
-  this.status != previousPrisonerSnapshot?.status
-
-private fun Prisoner.isSomeOtherMovementOut(previousPrisonerSnapshot: Prisoner?) = this.inOutStatus == "OUT" &&
-  this.status != previousPrisonerSnapshot?.status
-
-private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean = (this?.toLong() ?: Long.MAX_VALUE) < (previousSnapshotBookingId?.toLong() ?: 0)
-
-     */
     val messageDateTimeLocal = message.occurredAt.toLocalDateTime()
     when (message.additionalInformation.reason) {
       PrisonerReceiveReason.NEW_ADMISSION,
@@ -357,8 +274,50 @@ private fun String?.isBookingBefore(previousSnapshotBookingId: String?): Boolean
       PrisonerReleaseReason.TRANSFERRED,
       PrisonerReleaseReason.TEMPORARY_ABSENCE_RELEASE,
       PrisonerReleaseReason.SENT_TO_COURT,
+      PrisonerReleaseReason.REMOVED_FROM_HOSPITAL,
       -> null
     }
+  }
+
+  fun restrictedPatientRemovedHandler(message: RestrictedPatientRemovedDomainEvent) {
+    log.debug("restrictedPatientRemovedHandler {}", message)
+    val messageDateTimeLocal = message.occurredAt.toLocalDateTime()
+    val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
+      message.additionalInformation.prisonerNumber,
+      MatchType.RELEASED,
+      LocalDateTime.now().minusHours(2),
+      false,
+    ).filter {
+      it.previousOffenderDirection == "OUT" &&
+        it.previousOffenderReason == "HP"
+    }
+    if (existing.size == 1) {
+      with(existing[0]) {
+        domainReason = PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
+        domainTime = messageDateTimeLocal
+        matched = true
+      }
+    } else if (existing.size > 1) {
+      log.warn("Unexpected multiple matches: {}", existing)
+    } else {
+      repository.save(
+        MatchingEventPair(
+          matchType = MatchType.RELEASED,
+          nomsNumber = message.additionalInformation.prisonerNumber,
+          domainReason = PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name,
+          domainTime = messageDateTimeLocal,
+        ),
+      )
+    }
+    telemetryClient.trackEvent(
+      "restricted-patient-event",
+      mapOf(
+        "type" to MatchType.RELEASED.name,
+        "occurredAt" to messageDateTimeLocal.toString(),
+        "nomsNumber" to message.additionalInformation.prisonerNumber,
+        "reason" to PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name,
+      ),
+    )
   }
 }
 
@@ -431,4 +390,14 @@ enum class PrisonerReleaseReason(val description: String) {
   RELEASED("released from prison"),
   SENT_TO_COURT("sent to court"),
   TRANSFERRED("transfer to another prison"),
+  REMOVED_FROM_HOSPITAL("released from a secure hospital"),
 }
+
+data class RestrictedPatientRemovedDomainEvent(
+  val occurredAt: OffsetDateTime,
+  val additionalInformation: RestrictedPatientAdditionalInformationEvent,
+)
+
+data class RestrictedPatientAdditionalInformationEvent(
+  val prisonerNumber: String,
+)
