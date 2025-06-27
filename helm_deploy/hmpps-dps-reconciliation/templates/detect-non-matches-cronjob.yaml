@@ -1,11 +1,11 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "app.fullname" . }}-dlq-retry
+  name: {{ include "app.fullname" . }}-detect-non-matches
   labels:
     {{- include "app.labels" . | nindent 4 }}
 spec:
-  schedule: "{{ .Values.cron.retry_dlqs_schedule }}"
+  schedule: "*/10 8-17 * * 1-5"
   concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 5
   startingDeadlineSeconds: 600
@@ -17,7 +17,7 @@ spec:
       template:
         spec:
           containers:
-            - name: retry-all-dlqs
+            - name: detect-non-matches
               image: ghcr.io/ministryofjustice/hmpps-devops-tools
               volumeMounts:
                 - name: cronjob-api-helpers
@@ -39,7 +39,7 @@ spec:
                   TOKEN=$(get_auth_token "$AUTH_BASE_URL" "$CRONJOB_CLIENT_ID" "$CRONJOB_CLIENT_SECRET")
                   echo "Access token retrieved from HMPPS Auth"
 
-                  call_api PUT "http://hmpps-dps-reconciliation/queue-admin/retry-all-dlqs" "$TOKEN"
+                  call_api GET "http://hmpps-dps-reconciliation/reconciliation/detect" "$TOKEN"
                   echo "Completed successfully"
               securityContext:
                 capabilities:
