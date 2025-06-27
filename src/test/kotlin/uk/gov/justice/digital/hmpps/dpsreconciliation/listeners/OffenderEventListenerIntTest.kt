@@ -246,6 +246,78 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
           ),
         )
     }
+
+    @Test
+    fun `will not process a movement update`() {
+      val bookingId = 12345L
+      val offenderNo = "A1234AA"
+
+      prisonApi.stubGetMovementsForBooking(
+        12345L,
+        """
+  [ 
+    {
+      "sequence": 1,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC",
+      "createdDateTime": "2025-05-26T12:13:15",
+      "modifiedDateTime": "2025-05-26T13:14:16"
+    }
+  ]
+        """.trimIndent(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("offender-event-update"),
+          anyMap(),
+          isNull(),
+        )
+      }
+    }
+
+    @Test
+    fun `will not process a movement deletion`() {
+      val bookingId = 12345L
+      val offenderNo = "A1234AA"
+
+      prisonApi.stubGetMovementsForBooking(
+        12345L,
+        """
+  [ 
+    {
+      "sequence": 2,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
+    }
+  ]
+        """.trimIndent(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(offenderNo, bookingId)).build(),
+        // seq in message is 1 which does not exist
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("offender-event-deletion"),
+          anyMap(),
+          isNull(),
+        )
+      }
+    }
   }
 
   @Nested
