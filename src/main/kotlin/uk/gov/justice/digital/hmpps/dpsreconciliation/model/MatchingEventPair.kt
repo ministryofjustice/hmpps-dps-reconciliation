@@ -55,6 +55,22 @@ data class MatchingEventPair(
 
   override fun getId(): Long = id
   override fun isNew(): Boolean = new
+
+  override fun toString(): String = "MatchingEventPair(" +
+    "id=$id, " +
+    "nomsNumber=$nomsNumber, " +
+    "matchType=$matchType, " +
+    "createdDate=$createdDate, " +
+    (if (domainTime == null) "" else "domainTime=$domainTime, ") +
+    (if (domainReason == null) "" else "domainReason=$domainReason, ") +
+    (if (offenderTime == null) "" else "offenderTime=$offenderTime, ") +
+    (if (offenderReason == null) "" else "offenderReason=$offenderReason, ") +
+    (if (offenderBookingId == null) "" else "offenderBookingId=$offenderBookingId, ") +
+    (if (previousOffenderDirection == null) "" else "previousOffenderDirection=$previousOffenderDirection, ") +
+    (if (previousOffenderTime == null) "" else "previousOffenderTime=$previousOffenderTime, ") +
+    (if (previousOffenderReason == null) "" else "previousOffenderReason=$previousOffenderReason, ") +
+    "matched=$matched" +
+    ")"
 }
 
 enum class MatchType {

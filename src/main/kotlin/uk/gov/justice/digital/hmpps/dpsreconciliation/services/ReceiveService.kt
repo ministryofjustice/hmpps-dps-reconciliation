@@ -324,6 +324,24 @@ class ReceiveService(
       ),
     )
   }
+
+  fun detect(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime): String {
+    val nonMatches = repository.findByCreatedDateIsBetweenAndMatched(
+      startCreatedDate,
+      endCreatedDate,
+      false,
+    )
+
+    telemetryClient.trackEvent(
+      "non-match-event",
+      mapOf(
+        "count" to nonMatches.size.toString(),
+      ) + nonMatches
+        .take(20)
+        .associate { it.nomsNumber to it.toString() },
+    )
+    return "Found ${nonMatches.size} non-matching events"
+  }
 }
 
 private fun isRelease(previousMovement: BookingMovement): Boolean = previousMovement.movementType == "REL"
