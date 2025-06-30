@@ -1,6 +1,5 @@
 package uk.gov.justice.digital.hmpps.dpsreconciliation.resource
 
-import com.microsoft.applicationinsights.TelemetryClient
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
