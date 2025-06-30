@@ -16,7 +16,6 @@ import java.time.LocalDateTime
 @RestController
 @PreAuthorize("hasRole('DPS_RECONCILIATION__RW')")
 class ReconciliationResource(
-  private val telemetryClient: TelemetryClient,
   private val receiveService: ReceiveService,
 ) {
   @Operation(
