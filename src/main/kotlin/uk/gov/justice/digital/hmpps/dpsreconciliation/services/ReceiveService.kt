@@ -179,8 +179,8 @@ class ReceiveService(
       }
       telemetryClient.trackEvent(
         "merge-event",
-        objectMapper.convertValue<Map<String, String>>(message)
-          + mapOf("matchOutcome" to matchOutcome),
+        objectMapper.convertValue<Map<String, String>>(message) +
+          mapOf("matchOutcome" to matchOutcome),
       )
     }
   }
