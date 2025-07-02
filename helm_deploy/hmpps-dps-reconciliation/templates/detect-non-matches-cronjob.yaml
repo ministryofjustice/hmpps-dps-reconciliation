@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "app.labels" . | nindent 4 }}
 spec:
-  schedule: "{{ .Values.cron.detect_non_matches_schedule }}"
+  schedule: "{{ .Values.cron.housekeeping_schedule }}"
   concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 5
   startingDeadlineSeconds: 600
@@ -39,7 +39,7 @@ spec:
                   TOKEN=$(get_auth_token "$AUTH_BASE_URL" "$CRONJOB_CLIENT_ID" "$CRONJOB_CLIENT_SECRET")
                   echo "Access token retrieved from HMPPS Auth"
 
-                  call_api GET "http://hmpps-dps-reconciliation/reconciliation/detect" "$TOKEN"
+                  call_api GET "http://hmpps-dps-reconciliation/reconciliation/housekeeping" "$TOKEN"
                   echo "Completed successfully"
               securityContext:
                 capabilities:

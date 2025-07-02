@@ -18,10 +18,13 @@ class ReconciliationResource(
   private val receiveService: ReceiveService,
 ) {
   @Operation(
-    summary = "Checks the database for any events that were not matched",
-    description = "Checks for records created between the times given. Requires DPS_RECONCILIATION__RW",
+    summary = "Housekeeping job",
+    description = """
+      - Matches up any pairs of db rows which were missed;
+      - Checks the database for any remaining events that were not matched;
+      - purges old db rows
+      Checks for event records created between the times given. Requires DPS_RECONCILIATION__RW""",
     responses = [
-      // ApiResponse(responseCode = "200", description = "Mappings created"),
       ApiResponse(
         responseCode = "401",
         description = "Unauthorized to access this endpoint",
@@ -34,7 +37,7 @@ class ReconciliationResource(
       ),
     ],
   )
-  @GetMapping("/reconciliation/detect")
+  @GetMapping("/reconciliation/housekeeping")
   suspend fun detect(
     @Schema(description = "Earliest timestamp to check, default 4 hours ago", example = "2025-06-22T12:00:00", required = true)
     @RequestParam(value = "from", required = false)
@@ -42,9 +45,12 @@ class ReconciliationResource(
     @Schema(description = "Latest timestamp to check, default 2 hours ago", example = "2025-06-22T14:00:00", required = true)
     @RequestParam(value = "to", required = false)
     to: LocalDateTime?,
-  ): String = receiveService
-    .detect(
-      from ?: LocalDateTime.now().minusHours(4),
-      to ?: LocalDateTime.now().minusHours(2),
-    )
+  ): String {
+    val startCreatedDate = from ?: LocalDateTime.now().minusHours(4)
+    val endCreatedDate = to ?: LocalDateTime.now().minusHours(2)
+
+    receiveService.purgeOldMatchedRecords()
+    receiveService.batchMatch(startCreatedDate, endCreatedDate)
+    return receiveService.detect(startCreatedDate, endCreatedDate)
+  }
 }
