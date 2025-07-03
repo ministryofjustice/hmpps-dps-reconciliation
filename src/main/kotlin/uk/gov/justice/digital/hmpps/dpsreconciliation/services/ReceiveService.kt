@@ -5,8 +5,8 @@ import com.fasterxml.jackson.module.kotlin.convertValue
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import uk.gov.justice.digital.hmpps.dpsreconciliation.config.trackEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
@@ -14,10 +14,9 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.util.concurrent.TimeUnit
 
 @Service
-@Transactional
+@Transactional(isolation = Isolation.SERIALIZABLE)
 class ReceiveService(
   val prisonApi: PrisonApi,
   val telemetryClient: TelemetryClient,
@@ -52,6 +51,8 @@ class ReceiveService(
       movements.sortedBy { it.movementDateTime },
     )
 
+    var matchOutcome = ""
+
     when (message.movementType) {
       "ADM" -> {
         if (message.directionCode == "IN" &&
@@ -74,8 +75,10 @@ class ReceiveService(
               offenderBookingId = message.bookingId
               matched = true
             }
+            matchOutcome = "matched"
           } else if (existing.size > 1) {
             log.warn("Unexpected multiple matches: {}", existing)
+            matchOutcome = "multiple"
           } else {
             repository.save(
               MatchingEventPair(
@@ -87,10 +90,9 @@ class ReceiveService(
                 previousOffenderReason = previousMovement?.movementReasonCode,
                 previousOffenderTime = previousMovement?.movementDateTime,
                 previousOffenderDirection = previousMovement?.directionCode,
-                // previousOffenderBookingId = previousMovement?.bookingId, TODO: may not be required
-                // previousOffenderStatus = previous booking status
               ),
             )
+            matchOutcome = "saved"
           }
         }
       }
@@ -109,8 +111,10 @@ class ReceiveService(
             offenderBookingId = message.bookingId
             matched = true
           }
+          matchOutcome = "matched"
         } else if (existing.size > 1) {
           log.warn("Unexpected multiple matches: {}", existing)
+          matchOutcome = "multiple"
         } else {
           repository.save(
             MatchingEventPair(
@@ -126,15 +130,23 @@ class ReceiveService(
               // previousOffenderStatus = previous booking status
             ),
           )
+          matchOutcome = "saved"
         }
       }
     }
-    telemetryClient.trackEvent("offender-event", objectMapper.convertValue<Map<String, String>>(message))
+    telemetryClient.trackEvent(
+      "offender-event",
+      objectMapper.convertValue<Map<String, String>>(message) + mapOf(
+        "matchType" to (message.movementType ?: "Unknown"),
+        "matchOutcome" to matchOutcome,
+      ),
+    )
   }
 
   fun offenderMergeHandler(message: MergeMessage) {
     log.debug("offenderMergeHandler {}", message)
     if (message.type == "MERGE") {
+      var matchOutcome: String
       val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
         message.offenderIdDisplay!!,
         MatchType.RECEIVED,
@@ -149,8 +161,10 @@ class ReceiveService(
           offenderBookingId = message.bookingId
           matched = true
         }
+        matchOutcome = "matched"
       } else if (existing.size > 1) {
         log.warn("mergeHandler(): Unexpected multiple matches: {}", existing)
+        matchOutcome = "multiple"
       } else {
         repository.save(
           MatchingEventPair(
@@ -161,12 +175,16 @@ class ReceiveService(
             offenderTime = message.eventDatetime,
           ),
         )
+        matchOutcome = "saved"
       }
-      telemetryClient.trackEvent("merge-event", objectMapper.convertValue<Map<String, String>>(message))
+      telemetryClient.trackEvent(
+        "merge-event",
+        objectMapper.convertValue<Map<String, String>>(message) +
+          mapOf("matchOutcome" to matchOutcome),
+      )
     }
   }
 
-  @Scheduled(initialDelay = 0, fixedRate = 24, timeUnit = TimeUnit.HOURS)
   fun purgeOldMatchedRecords() {
     val rows = repository.deleteByCreatedDateIsBeforeAndMatched(
       createdDate = LocalDateTime.now().minusDays(14),
@@ -187,6 +205,8 @@ class ReceiveService(
     log.debug("prisonerDomainReceiveHandler {}", message)
 
     val messageDateTimeLocal = message.occurredAt.toLocalDateTime()
+    var matchOutcome: String
+
     when (message.additionalInformation.reason) {
       PrisonerReceiveReason.NEW_ADMISSION,
       PrisonerReceiveReason.READMISSION,
@@ -205,6 +225,10 @@ class ReceiveService(
             domainTime = messageDateTimeLocal
             matched = true
           }
+          matchOutcome = "matched"
+        } else if (existing.size > 1) {
+          log.warn("Unexpected multiple matches: {}", existing)
+          matchOutcome = "multiple"
         } else {
           repository.save(
             MatchingEventPair(
@@ -214,6 +238,7 @@ class ReceiveService(
               domainTime = messageDateTimeLocal,
             ),
           )
+          matchOutcome = "saved"
         }
         telemetryClient.trackEvent(
           "domain-event",
@@ -222,6 +247,7 @@ class ReceiveService(
             "occurredAt" to messageDateTimeLocal.toString(),
             "nomsNumber" to message.additionalInformation.nomsNumber,
             "reason" to message.additionalInformation.reason.name,
+            "matchOutcome" to matchOutcome,
           ) + (message.additionalInformation.prisonId?.let { mapOf("prisonId" to it) } ?: emptyMap()),
         )
       }
@@ -236,6 +262,7 @@ class ReceiveService(
   fun prisonerDomainReleaseHandler(message: PrisonerReleaseDomainEvent) {
     log.debug("prisonerDomainReleaseHandler {}", message)
     val messageDateTimeLocal = message.occurredAt.toLocalDateTime()
+    var matchOutcome: String
 
     when (message.additionalInformation.reason) {
       PrisonerReleaseReason.RELEASED,
@@ -253,8 +280,10 @@ class ReceiveService(
             domainTime = messageDateTimeLocal
             matched = true
           }
+          matchOutcome = "matched"
         } else if (existing.size > 1) {
           log.warn("Unexpected multiple matches: {}", existing)
+          matchOutcome = "multiple"
         } else {
           repository.save(
             MatchingEventPair(
@@ -264,6 +293,7 @@ class ReceiveService(
               domainTime = messageDateTimeLocal,
             ),
           )
+          matchOutcome = "saved"
         }
         telemetryClient.trackEvent(
           "domain-event",
@@ -272,6 +302,7 @@ class ReceiveService(
             "occurredAt" to messageDateTimeLocal.toString(),
             "nomsNumber" to message.additionalInformation.nomsNumber,
             "reason" to message.additionalInformation.reason.name,
+            "matchOutcome" to matchOutcome,
           ) + (message.additionalInformation.prisonId?.let { mapOf("prisonId" to it) } ?: emptyMap()),
         )
       }
@@ -284,9 +315,21 @@ class ReceiveService(
     }
   }
 
+  /*
+  If a prisoner leaves a hospital there may be a corresponding OUT movement or there may not,
+  e.g.
+    27th 08:31  EXTERNAL_MOVEMENT-CHANGED ADM IN
+    27th 08:31. restricted-patients.patient.removed, from restricted-patient-removed-cleanup (FROM hmpps-restricted-patients-api)
+    prisoner-offender-search.prisoner.received
+
+    27th 14:42  EXTERNAL_MOVEMENT-CHANGED REL
+    prisoner-offender-search.prisoner.released
+   */
   fun restrictedPatientRemovedHandler(message: RestrictedPatientRemovedDomainEvent) {
     log.debug("restrictedPatientRemovedHandler {}", message)
     val messageDateTimeLocal = message.occurredAt.toLocalDateTime()
+    var matchOutcome: String
+
     val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
       message.additionalInformation.prisonerNumber,
       MatchType.RELEASED,
@@ -296,14 +339,17 @@ class ReceiveService(
       it.previousOffenderDirection == "OUT" &&
         it.previousOffenderReason == "HP"
     }
+
     if (existing.size == 1) {
       with(existing[0]) {
         domainReason = PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
         domainTime = messageDateTimeLocal
         matched = true
       }
+      matchOutcome = "matched"
     } else if (existing.size > 1) {
       log.warn("Unexpected multiple matches: {}", existing)
+      matchOutcome = "multiple"
     } else {
       repository.save(
         MatchingEventPair(
@@ -313,6 +359,7 @@ class ReceiveService(
           domainTime = messageDateTimeLocal,
         ),
       )
+      matchOutcome = "saved"
     }
     telemetryClient.trackEvent(
       "restricted-patient-event",
@@ -321,8 +368,18 @@ class ReceiveService(
         "occurredAt" to messageDateTimeLocal.toString(),
         "nomsNumber" to message.additionalInformation.prisonerNumber,
         "reason" to PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name,
+        "matchOutcome" to matchOutcome,
       ),
     )
+  }
+
+  fun batchMatch(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime) {
+    val nonMatches = repository.findByCreatedDateIsBetweenAndMatched(
+      startCreatedDate,
+      endCreatedDate,
+      false,
+    )
+    matchUpHospitalReleases(nonMatches)
   }
 
   fun detect(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime): String {
@@ -342,9 +399,56 @@ class ReceiveService(
     )
     return "Found ${nonMatches.size} non-matching events"
   }
+
+  private fun matchUpHospitalReleases(nonMatches: List<MatchingEventPair>) {
+    nonMatches.groupBy { it.nomsNumber }
+      .values
+      .forEach { value ->
+        if (isUnmatchedRelease(value)) {
+          val domainEvent = if (value[0].offenderTime == null) value.first() else value.last()
+          val offenderEvent = if (value[0].offenderTime == null) value.last() else value.first()
+          if (
+            domainEvent.domainReason == PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name &&
+            offenderEvent.previousOffenderReason == "HP"
+          ) {
+            telemetryClient.trackEvent(
+              "batch-match",
+              mapOf(
+                "domainRow" to domainEvent.toString(),
+                "offenderRow" to offenderEvent.toString(),
+              ),
+            )
+            offenderEvent.domainReason = domainEvent.domainReason
+            offenderEvent.domainTime = domainEvent.domainTime
+            offenderEvent.matched = true
+            repository.delete(domainEvent)
+          }
+        } else if (isReleaseOrphan(value)) {
+          val domainEvent = value.first()
+          if (domainEvent.domainReason == PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name) {
+            telemetryClient.trackEvent(
+              "batch-match-orphan",
+              mapOf(
+                "domainRow" to domainEvent.toString(),
+              ),
+            )
+            domainEvent.offenderReason = "RP-EVENT"
+            domainEvent.matched = true
+          }
+        }
+      }
+  }
 }
 
 private fun isRelease(previousMovement: BookingMovement): Boolean = previousMovement.movementType == "REL"
+
+private fun isUnmatchedRelease(value: List<MatchingEventPair>): Boolean = value.size == 2 &&
+  value.first().matchType == MatchType.RELEASED &&
+  value.last().matchType == MatchType.RELEASED
+
+private fun isReleaseOrphan(value: List<MatchingEventPair>): Boolean = value.size == 1 &&
+  value.first().matchType == MatchType.RELEASED &&
+  value.first().offenderTime == null
 
 data class ExternalPrisonerMovementMessage(
   val eventType: String?,
