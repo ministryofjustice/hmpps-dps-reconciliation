@@ -4,7 +4,7 @@ ARG BUILD_NUMBER
 ENV BUILD_NUMBER=${BUILD_NUMBER:-1_0_0}
 
 WORKDIR /builder
-COPY hmpps-dps-reconciliation*.jar app.jar
+COPY hmpps-dps-reconciliation-*.jar app.jar
 RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 FROM eclipse-temurin:21-jre-jammy
@@ -38,4 +38,4 @@ COPY --from=builder --chown=appuser:appgroup /builder/extracted/application/ ./
 
 USER 2000
 
-ENTRYPOINT ["java", "-XX:+AlwaysActAsServerClassMachine", "-javaagent:/app/agent.jar", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:+AlwaysActAsServerClassMachine", "-javaagent:agent.jar", "-jar", "app.jar"]
