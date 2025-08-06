@@ -61,24 +61,26 @@ class ReceiveService(
           // NB: movementReasonCode can be anything - it doesn't indicate whether it is a real 'first' entry to prison
           // Also movement datetime can be hours or even days ago when nomis entry is retrospective
           // Check for a corresponding event by actual event arrival. This should be within minutes unless there is a serious outage
-          val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
+          val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
             message.offenderIdDisplay!!,
             MatchType.RECEIVED,
             LocalDateTime.now().minusHours(2),
             // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
             false,
           )
-          if (existing.size == 1) {
+          if (existing.isNotEmpty()) {
             with(existing[0]) {
               offenderReason = message.movementReasonCode
               offenderTime = message.movementDateTime
               offenderBookingId = message.bookingId
               matched = true
             }
-            matchOutcome = "matched"
-          } else if (existing.size > 1) {
-            log.warn("Unexpected multiple matches: {}", existing)
-            matchOutcome = "multiple"
+            if (existing.size == 1) {
+              matchOutcome = "matched"
+            } else {
+              log.warn("externalMovementHandler() ADM: Unexpected multiple matches: {}", existing)
+              matchOutcome = "multiple"
+            }
           } else {
             repository.save(
               MatchingEventPair(
@@ -98,23 +100,25 @@ class ReceiveService(
       }
 
       "REL" -> {
-        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
+        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
           message.offenderIdDisplay!!,
           MatchType.RELEASED,
           LocalDateTime.now().minusHours(2),
           false,
         )
-        if (existing.size == 1) {
+        if (existing.isNotEmpty()) {
           with(existing[0]) {
             offenderReason = message.movementReasonCode
             offenderTime = message.movementDateTime
             offenderBookingId = message.bookingId
             matched = true
           }
-          matchOutcome = "matched"
-        } else if (existing.size > 1) {
-          log.warn("Unexpected multiple matches: {}", existing)
-          matchOutcome = "multiple"
+          if (existing.size == 1) {
+            matchOutcome = "matched"
+          } else {
+            log.warn("externalMovementHandler() REL: Unexpected multiple matches: {}", existing)
+            matchOutcome = "multiple"
+          }
         } else {
           repository.save(
             MatchingEventPair(
@@ -145,26 +149,29 @@ class ReceiveService(
 
   fun offenderMergeHandler(message: MergeMessage) {
     log.debug("offenderMergeHandler {}", message)
+
     if (message.type == "MERGE") {
       var matchOutcome: String
-      val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatched(
+      val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
         message.offenderIdDisplay!!,
         MatchType.RECEIVED,
         LocalDateTime.now().minusHours(2),
         // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
         false,
       )
-      if (existing.size == 1) {
+      if (existing.isNotEmpty()) {
         with(existing[0]) {
           offenderReason = "MERGE-EVENT"
           offenderTime = message.eventDatetime
           offenderBookingId = message.bookingId
           matched = true
         }
-        matchOutcome = "matched"
-      } else if (existing.size > 1) {
-        log.warn("mergeHandler(): Unexpected multiple matches: {}", existing)
-        matchOutcome = "multiple"
+        if (existing.size == 1) {
+          matchOutcome = "matched"
+        } else {
+          log.warn("offenderMergeHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+          matchOutcome = "multiple"
+        }
       } else {
         repository.save(
           MatchingEventPair(
@@ -187,7 +194,7 @@ class ReceiveService(
 
   fun purgeOldMatchedRecords() {
     val rows = repository.deleteByCreatedDateIsBeforeAndMatched(
-      createdDate = LocalDateTime.now().minusDays(14),
+      createdDate = LocalDateTime.now().minusMonths(6),
       matched = true,
     )
     telemetryClient.trackEvent("database-purge", mapOf("deleted-rows" to rows.toString()))
@@ -213,22 +220,24 @@ class ReceiveService(
       PrisonerReceiveReason.READMISSION_SWITCH_BOOKING,
       PrisonerReceiveReason.POST_MERGE_ADMISSION, // will match with a merge event, not a movement
       -> {
-        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
+        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
           message.additionalInformation.nomsNumber,
           MatchType.RECEIVED,
           LocalDateTime.now().minusHours(2),
           false,
         )
-        if (existing.size == 1) {
+        if (existing.isNotEmpty()) {
           with(existing[0]) {
             domainReason = message.additionalInformation.reason.name
             domainTime = messageDateTimeLocal
             matched = true
           }
-          matchOutcome = "matched"
-        } else if (existing.size > 1) {
-          log.warn("Unexpected multiple matches: {}", existing)
-          matchOutcome = "multiple"
+          if (existing.size == 1) {
+            matchOutcome = "matched"
+          } else {
+            log.warn("prisonerDomainReceiveHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+            matchOutcome = "multiple"
+          }
         } else {
           repository.save(
             MatchingEventPair(
@@ -268,22 +277,24 @@ class ReceiveService(
       PrisonerReleaseReason.RELEASED,
       PrisonerReleaseReason.RELEASED_TO_HOSPITAL,
       -> {
-        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
+        val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
           message.additionalInformation.nomsNumber,
           MatchType.RELEASED,
           LocalDateTime.now().minusHours(2),
           false,
         )
-        if (existing.size == 1) {
+        if (existing.isNotEmpty()) {
           with(existing[0]) {
             domainReason = message.additionalInformation.reason.name
             domainTime = messageDateTimeLocal
             matched = true
           }
-          matchOutcome = "matched"
-        } else if (existing.size > 1) {
-          log.warn("Unexpected multiple matches: {}", existing)
-          matchOutcome = "multiple"
+          if (existing.size == 1) {
+            matchOutcome = "matched"
+          } else {
+            log.warn("prisonerDomainReleaseHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+            matchOutcome = "multiple"
+          }
         } else {
           repository.save(
             MatchingEventPair(
@@ -330,7 +341,7 @@ class ReceiveService(
     val messageDateTimeLocal = message.occurredAt.toLocalDateTime()
     var matchOutcome: String
 
-    val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatched(
+    val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
       message.additionalInformation.prisonerNumber,
       MatchType.RELEASED,
       LocalDateTime.now().minusHours(2),
@@ -340,16 +351,18 @@ class ReceiveService(
         it.previousOffenderReason == "HP"
     }
 
-    if (existing.size == 1) {
+    if (existing.isNotEmpty()) {
       with(existing[0]) {
         domainReason = PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
         domainTime = messageDateTimeLocal
         matched = true
       }
-      matchOutcome = "matched"
-    } else if (existing.size > 1) {
-      log.warn("Unexpected multiple matches: {}", existing)
-      matchOutcome = "multiple"
+      if (existing.size == 1) {
+        matchOutcome = "matched"
+      } else {
+        log.warn("restrictedPatientRemovedHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+        matchOutcome = "multiple"
+      }
     } else {
       repository.save(
         MatchingEventPair(

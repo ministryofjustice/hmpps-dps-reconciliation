@@ -201,7 +201,7 @@ class ReconciliationResourceIntTest : IntegrationTestBase() {
       MatchingEventPair(
         matchType = MatchType.RELEASED,
         nomsNumber = "TO-GO",
-        createdDate = LocalDateTime.parse("2025-04-22T12:00:00"),
+        createdDate = LocalDateTime.parse("2025-02-03T12:00:00"),
         matched = true,
       ),
     )
