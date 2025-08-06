@@ -25,19 +25,30 @@ a mismatch is detected, i,e, there is an event which cannot be paired up.
 A merge occurs:
 
 - BOOKING_NUMBER-CHANGED, type MERGE
-- prisoner-offender-search.prisoner.received type POST_MERGE_ADMISSION 
+- If the surviving noms no is OUT but the deleted one was IN, then there is a prisoner-offender-search.prisoner.received type POST_MERGE_ADMISSION 
 
 Prisoner released from hospital:
 
 - EXTERNAL_MOVEMENT-CHANGED REL where previous movement was a REL-HP (release to the hospital)
 - restricted-patients.patient.removed
 
-Prisoner returns from hospital to prison:
+Prisoner returns from hospital to prison; note the REL is **optional**:
 
 - restricted-patients.patient.removed
 - ( *possible* EXTERNAL_MOVEMENT-CHANGED REL where previous event was a REL-HP )
 - EXTERNAL_MOVEMENT-CHANGED ADM
 - prisoner-offender-search.prisoner.received READMISSION
+
+## Mismatch scenarios (encountered so far)
+
+1. There is a bug in Nomis where an offender is readmitted on an old booking, and
+the seq of this booking is not set to '1'. prisoner-search wrongly get stale data from the other booking and fails
+to detect the movement and does not raise an event.
+1. A prisoner can be released twice, i.e. have duplicate REL movements, with just one release domain event.
+1. A rapid (within minutes) double merge may be related to only one domain event (e.g. an ADM).
+
+It is also possible for a user to set a released or active-out prisoner to IN without creating a movement. This does not cause a mismatch but may result in a prisoner-search EVENTS_UNKNOWN_MOVEMENT app-insights event.
+ 
 
 # Cronjob
 
