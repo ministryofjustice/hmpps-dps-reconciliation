@@ -232,17 +232,19 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
         "offenderReason",
         "offenderTime",
         "matched",
+        "comment",
       )
         .containsExactly(
           Tuple(
             MatchType.RECEIVED,
             offenderNo,
             "NEW_ADMISSION",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             bookingId,
             "REASON",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
+            "matchOutcome = matched",
           ),
         )
     }
@@ -471,17 +473,19 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
         "offenderReason",
         "offenderTime",
         "matched",
+        "comment",
       )
         .containsExactly(
           Tuple(
             MatchType.RELEASED,
             offenderNo,
             "RELEASED",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             bookingId,
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
+            "matchOutcome = matched",
           ),
         )
     }
@@ -573,17 +577,19 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
         "offenderReason",
         "offenderTime",
         "matched",
+        "comment",
       )
         .containsExactly(
           Tuple(
             MatchType.RECEIVED,
             offenderNo,
             "POST_MERGE_ADMISSION",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             bookingId,
             "MERGE-EVENT",
             LocalDateTime.parse("2025-05-13T15:38:56"),
             true,
+            "matchOutcome = matched",
           ),
         )
     }

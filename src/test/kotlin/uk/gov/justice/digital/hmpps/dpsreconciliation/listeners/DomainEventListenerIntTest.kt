@@ -11,6 +11,7 @@ import org.mockito.kotlin.check
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.reset
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
@@ -80,7 +81,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             MatchType.RECEIVED,
             prisonerNumber,
             "NEW_ADMISSION",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             false,
           ),
         )
@@ -140,17 +141,100 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
         "offenderReason",
         "offenderTime",
         "matched",
+        "comment",
       )
         .containsExactly(
           Tuple(
             MatchType.RECEIVED,
             prisonerNumber,
             "NEW_ADMISSION",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             101L,
             "REASON",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
+            "matchOutcome = matched",
+          ),
+        )
+    }
+
+    @Test
+    fun `will match when there are multiple external movement events`() {
+      val prisonerNumber = "A7089FD"
+
+      prisonApi.stubGetMovementsForBooking(
+        101,
+        """
+          [
+       {
+      "sequence": 1,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
+       }]
+        """.trimMargin(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(prisonerNumber, 101)).build(),
+      ).get()
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderAdmissionMessage(prisonerNumber, 101)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient, times(2)).trackEvent(eq("offender-event"), anyMap(), isNull())
+      }
+      reset(telemetryClient)
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validDomainReceiveMessage(prisonerNumber)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("domain-event"),
+          check {
+            assertThat(it["matchOutcome"]).isEqualTo("multiple: 2")
+          },
+          isNull(),
+        )
+      }
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
+          prisonerNumber,
+          MatchType.RECEIVED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
+          true,
+        ),
+      ).extracting(
+        "matchType",
+        "nomsNumber",
+        "domainReason",
+        "domainTime",
+        "offenderBookingId",
+        "offenderReason",
+        "offenderTime",
+        "matched",
+        "comment",
+      )
+        .containsExactly(
+          Tuple(
+            MatchType.RECEIVED,
+            prisonerNumber,
+            "NEW_ADMISSION",
+            expectedDomainTime,
+            101L,
+            "REASON",
+            LocalDateTime.parse("2025-05-13T15:38:30"),
+            true,
+            "matchOutcome = multiple: 2",
           ),
         )
     }
@@ -218,17 +302,101 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
         "offenderReason",
         "offenderTime",
         "matched",
+        "comment",
       )
         .containsExactly(
           Tuple(
             MatchType.RELEASED,
             prisonerNumber,
             "RELEASED",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             101L,
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
+            "matchOutcome = matched",
+          ),
+        )
+    }
+
+    @Test
+    fun `will match when there are multiple external movement events`() {
+      val prisonerNumber = "A7089FD"
+
+      prisonApi.stubGetMovementsForBooking(
+        101,
+        """
+          [
+       {
+      "sequence": 1,
+      "movementType": "ADM",
+      "directionCode": "IN",
+      "movementDateTime": "2025-05-26T12:13:14",
+      "movementReasonCode": "LC",
+      "createdDateTime":  "2025-05-26T12:13:15"
+       }]
+        """.trimMargin(),
+      )
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderReleaseMessage(prisonerNumber, 101)).build(),
+      ).get()
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validOffenderReleaseMessage(prisonerNumber, 101)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient, times(2)).trackEvent(eq("offender-event"), anyMap(), isNull())
+      }
+      reset(telemetryClient)
+
+      awsSqsReconciliationClient.sendMessage(
+        SendMessageRequest.builder().queueUrl(reconciliationUrl)
+          .messageBody(validDomainReleaseMessage(prisonerNumber)).build(),
+      )
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("domain-event"),
+          check {
+            assertThat(it["type"]).isEqualTo("RELEASED")
+            assertThat(it["matchOutcome"]).isEqualTo("multiple: 2")
+          },
+          isNull(),
+        )
+      }
+
+      assertThat(
+        repository.findByNomsNumberAndMatchTypeAndDomainTimeAfterAndMatched(
+          prisonerNumber,
+          MatchType.RELEASED,
+          LocalDateTime.parse("2025-05-01T10:00:00"),
+          true,
+        ),
+      ).extracting(
+        "matchType",
+        "nomsNumber",
+        "domainReason",
+        "domainTime",
+        "offenderBookingId",
+        "offenderReason",
+        "offenderTime",
+        "matched",
+        "comment",
+      )
+        .containsExactly(
+          Tuple(
+            MatchType.RELEASED,
+            prisonerNumber,
+            "RELEASED",
+            expectedDomainTime,
+            101L,
+            "RELEASED",
+            LocalDateTime.parse("2025-05-13T15:38:30"),
+            true,
+            "matchOutcome = multiple: 2",
           ),
         )
     }
@@ -303,17 +471,19 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
         "offenderReason",
         "offenderTime",
         "matched",
+        "comment",
       )
         .containsExactly(
           Tuple(
             MatchType.RELEASED,
             prisonerNumber,
             "REMOVED_FROM_HOSPITAL",
-            LocalDateTime.parse("2025-05-13T15:38:48"),
+            expectedDomainTime,
             101L,
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
+            "matchOutcome = matched",
           ),
         )
     }
