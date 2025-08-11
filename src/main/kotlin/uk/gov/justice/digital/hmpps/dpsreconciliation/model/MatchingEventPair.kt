@@ -37,6 +37,7 @@ data class MatchingEventPair(
 
   val createdDate: LocalDateTime = LocalDateTime.now(),
   var matched: Boolean = false,
+  var comment: String? = null,
 
   @Transient
   @Value("false")

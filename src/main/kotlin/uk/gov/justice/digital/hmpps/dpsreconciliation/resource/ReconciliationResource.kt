@@ -51,6 +51,6 @@ class ReconciliationResource(
 
     receiveService.purgeOldMatchedRecords()
     receiveService.batchMatch(startCreatedDate, endCreatedDate)
-    return receiveService.detect(startCreatedDate, endCreatedDate)
+    return receiveService.detectNonMatches(startCreatedDate, endCreatedDate)
   }
 }

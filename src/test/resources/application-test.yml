@@ -19,8 +19,8 @@ hmpps.sqs:
   provider: localstack
   queues:
     reconciliation:
-      queueName: "visit-${random.uuid}"
-      dlqName: "visit-dlq-${random.uuid}"
+      queueName: "reconciliation-${random.uuid}"
+      dlqName: "reconciliation-dlq-${random.uuid}"
       subscribeTopicId: domainevents
       subscribeFilter: >-
         { "eventType":[
@@ -29,7 +29,7 @@ hmpps.sqs:
           "prisoner-offender-search.prisoner.received" ,
           "prisoner-offender-search.prisoner.released"
         ]}
-      dlqMaxReceiveCount: 1
+      dlqMaxReceiveCount: 2
       visibilityTimeout: 10
 
   topics:

@@ -30,12 +30,18 @@ import uk.gov.justice.hmpps.sqs.HmppsQueue
 import uk.gov.justice.hmpps.sqs.HmppsQueueService
 import uk.gov.justice.hmpps.sqs.countAllMessagesOnQueue
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
+
+internal const val TEST_OCCURRED_AT_OFFSET_TIME = "2025-05-13T15:38:48.0Z"
 
 @ExtendWith(HmppsAuthApiExtension::class, PrisonApiExtension::class)
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ActiveProfiles("test")
 abstract class IntegrationTestBase {
+  val expectedDomainTime: LocalDateTime = OffsetDateTime.parse(TEST_OCCURRED_AT_OFFSET_TIME).atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
 
   @Autowired
   protected lateinit var repository: MatchingEventPairRepository
@@ -173,15 +179,15 @@ private fun validMessage(eventType: String, message: String) =
 
 internal fun validDomainReceiveMessage(prisonerNumber: String, reason: String = "NEW_ADMISSION") = validMessage(
   "prisoner-offender-search.prisoner.received",
-  """{\"eventType\":\"prisoner-offender-search.prisoner.received\", \"description\": \"some desc\",\"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}""",
+  """{\"eventType\":\"prisoner-offender-search.prisoner.received\", \"description\": \"some desc\",\"occurredAt\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}""",
 )
 
 internal fun validDomainReleaseMessage(prisonerNumber: String, reason: String = "RELEASED") = validMessage(
   "prisoner-offender-search.prisoner.released",
-  """{\"eventType\":\"prisoner-offender-search.prisoner.released\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}""",
+  """{\"eventType\":\"prisoner-offender-search.prisoner.released\", \"description\": \"some desc\", \"occurredAt\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"additionalInformation\": {\"nomsNumber\":\"$prisonerNumber\", \"reason\":\"$reason\",\"prisonId\":\"CFI\"}}""",
 )
 
 internal fun validDomainRPRemovedMessage(prisonerNumber: String) = validMessage(
   "restricted-patients.patient.removed",
-  """{\"eventType\":\"restricted-patients.patient.removed\", \"description\": \"some desc\", \"occurredAt\":\"2025-05-13T15:38:48.0Z\", \"additionalInformation\": {\"prisonerNumber\":\"$prisonerNumber\"}}""",
+  """{\"eventType\":\"restricted-patients.patient.removed\", \"description\": \"some desc\", \"occurredAt\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"additionalInformation\": {\"prisonerNumber\":\"$prisonerNumber\"}}""",
 )

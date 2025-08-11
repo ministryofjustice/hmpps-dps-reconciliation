@@ -59,6 +59,11 @@ server:
   error:
     include-message: always
 
+hmpps.sqs:
+  queues:
+    reconciliation:
+      errorVisibilityTimeout: 2
+
 management:
   endpoints:
     web:
