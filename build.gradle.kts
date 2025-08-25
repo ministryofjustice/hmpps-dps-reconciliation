@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "8.3.6"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "8.3.7"
   kotlin("plugin.spring") version "2.2.10"
   kotlin("plugin.jpa") version "2.2.10"
 }
@@ -15,7 +15,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:5.4.10")
-  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.11")
 
   runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
   runtimeOnly("org.flywaydb:flyway-core")
@@ -25,7 +25,7 @@ dependencies {
   implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.18.1")
 
   testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:1.5.0")
-  testImplementation("io.swagger.parser.v3:swagger-parser:2.1.31") {
+  testImplementation("io.swagger.parser.v3:swagger-parser:2.1.32") {
     exclude(group = "io.swagger.core.v3")
   }
   testImplementation("org.wiremock:wiremock-standalone:3.13.1")
