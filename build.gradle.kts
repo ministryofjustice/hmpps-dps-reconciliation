@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "9.0.0"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "9.0.1"
   kotlin("plugin.spring") version "2.2.10"
   kotlin("plugin.jpa") version "2.2.10"
 }
@@ -15,7 +15,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:5.4.10")
-  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.12")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
 
   runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
   runtimeOnly("org.flywaydb:flyway-core")
@@ -30,7 +30,7 @@ dependencies {
   }
   testImplementation("org.wiremock:wiremock-standalone:3.13.1")
   testImplementation("org.testcontainers:localstack")
-  testImplementation("com.amazonaws:aws-java-sdk-core:1.12.789")
+  testImplementation("com.amazonaws:aws-java-sdk-core:1.12.791")
   testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("io.mockk:mockk:1.14.5")
