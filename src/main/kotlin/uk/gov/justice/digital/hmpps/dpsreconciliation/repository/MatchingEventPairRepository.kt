@@ -12,6 +12,6 @@ interface MatchingEventPairRepository : CrudRepository<MatchingEventPair, Long> 
   fun findByNomsNumberAndMatchTypeAndOffenderTimeAfterAndMatched(nomsNumber: String, matchType: MatchType, offenderTime: LocalDateTime, matched: Boolean): List<MatchingEventPair>
   fun findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(nomsNumber: String, matchType: MatchType, createdDate: LocalDateTime, matched: Boolean): List<MatchingEventPair>
   fun findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(nomsNumber: String, matchType: MatchType, createdDate: LocalDateTime, matched: Boolean): List<MatchingEventPair>
-  fun deleteByCreatedDateIsBeforeAndMatched(createdDate: LocalDateTime, matched: Boolean): Int
+  fun deleteByCreatedDateIsBeforeAndMatched(createdDate: LocalDateTime, matched: Boolean): Integer
   fun findByCreatedDateIsBetweenAndMatched(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime, matched: Boolean): List<MatchingEventPair>
 }
