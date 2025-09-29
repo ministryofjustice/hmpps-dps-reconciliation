@@ -56,4 +56,3 @@ generic-prometheus-alerts:
 
 cron:
   retry_dlqs_schedule: "*/10 * * * *"
-  housekeeping_schedule: "0 */2 * * *"
