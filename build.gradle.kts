@@ -23,6 +23,9 @@ dependencies {
   runtimeOnly("org.flywaydb:flyway-database-postgresql")
   implementation("io.opentelemetry:opentelemetry-extension-kotlin:1.52.0")
   implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.18.1")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk9")
 
   testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:1.7.0")
   testImplementation("io.swagger.parser.v3:swagger-parser:2.1.34") {
@@ -34,6 +37,7 @@ dependencies {
   testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("io.mockk:mockk:1.14.5")
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 }
 
 kotlin {
