@@ -37,4 +37,4 @@ generic-prometheus-alerts:
 cron:
   retry_dlqs_schedule: "*/10 8-17 * * 1-5" # UTC
   # SDIT-2804 Running the new batch job in preprod as a test, so "turning off" the old cronjob to prevent interference
-  housekeeping_schedule: "0 0 0 31 2"
+  housekeeping_schedule: "0 0 31 2 0"
