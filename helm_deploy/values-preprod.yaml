@@ -17,6 +17,13 @@ generic-service:
     startup: '50 6 * * 1-5'
     shutdown: '0 18 * * 1-5' # UTC
 
+  # The name has max length of 27 chars (Cronjob name max length is 52 chars, including prefix "hmpps-dps-reconciliation-")
+  # The type must exist in enum BatchType
+  batchjobs:
+    - name: detect-non-matches-new
+      type: DETECT_NON_MATCHES
+      schedule: "0 8-16/2 * * 1-5"
+
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
 # See https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html#creating-your-own-custom-alerts
 generic-prometheus-alerts:
@@ -29,4 +36,5 @@ generic-prometheus-alerts:
 
 cron:
   retry_dlqs_schedule: "*/10 8-17 * * 1-5" # UTC
-  housekeeping_schedule: "0 8-16/2 * * 1-5"
+  # SDIT-2804 Running the new batch job in preprod as a test, so "turning off" the old cronjob to prevent interference
+  housekeeping_schedule: "0 0 0 31 2"
