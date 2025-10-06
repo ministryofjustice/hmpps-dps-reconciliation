@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "9.1.1"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "9.1.2"
   kotlin("plugin.spring") version "2.2.20"
   kotlin("plugin.jpa") version "2.2.20"
 }
@@ -33,10 +33,10 @@ dependencies {
   }
   testImplementation("org.wiremock:wiremock-standalone:3.13.1")
   testImplementation("org.testcontainers:localstack")
-  testImplementation("com.amazonaws:aws-java-sdk-core:1.12.791")
+  testImplementation("com.amazonaws:aws-java-sdk-core:1.12.792")
   testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
   testImplementation("org.testcontainers:postgresql")
-  testImplementation("io.mockk:mockk:1.14.5")
+  testImplementation("io.mockk:mockk:1.14.6")
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 }
 
