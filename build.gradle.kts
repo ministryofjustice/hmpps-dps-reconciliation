@@ -7,6 +7,7 @@ plugins {
 }
 
 configurations {
+  implementation { exclude(module = "commons-logging") }
   testImplementation { exclude(group = "org.junit.vintage") }
 }
 
@@ -41,14 +42,18 @@ dependencies {
 }
 
 kotlin {
-  jvmToolchain(21)
   compilerOptions {
     freeCompilerArgs.addAll("-Xjvm-default=all", "-Xwhen-guards", "-Xannotation-default-target=param-property")
   }
 }
 
+java {
+  sourceCompatibility = JavaVersion.VERSION_24
+  targetCompatibility = JavaVersion.VERSION_24
+}
+
 tasks {
   withType<KotlinCompile> {
-    compilerOptions.jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
+    compilerOptions.jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24
   }
 }

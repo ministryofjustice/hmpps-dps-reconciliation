@@ -1,5 +1,4 @@
 name: Pipeline [test -> build -> deploy]
-
 on:
   push:
     branches:
@@ -16,11 +15,9 @@ on:
         required: true
         default: false
         type: boolean
-
 permissions:
   contents: read
   packages: write
-
 concurrency:
   # only cancel in progress when on a branch - use SHA on main to ensure uniqueness
   group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
@@ -43,13 +40,14 @@ jobs:
       - id: app_version
         name: Application version creators
         uses: ministryofjustice/hmpps-github-actions/.github/actions/build-test-and-deploy/create_app_version@v2 # WORKFLOW_VERSION
-  gradle_verify:
+  gradle-verify:
     name: Run the tests
     uses: ministryofjustice/hmpps-github-actions/.github/workflows/gradle_verify.yml@v2 # WORKFLOW_VERSION
     secrets: inherit
     with:
       gradle-command: 'BUILD_NUMBER=${{ needs.app_version.outputs.version}} ./gradlew assemble check'
       upload-build-artifacts: ${{ github.ref == 'refs/heads/main' }}
+      java-version: "25"
     needs:
       - app_version
   build:
@@ -57,7 +55,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     uses: ministryofjustice/hmpps-github-actions/.github/workflows/docker_build.yml@v2 # WORKFLOW_VERSION
     needs:
-      - gradle_verify
+      - gradle-verify
     with:
       docker_registry: 'ghcr.io'
       registry_org: 'ministryofjustice'
