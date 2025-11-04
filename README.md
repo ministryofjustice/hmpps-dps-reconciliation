@@ -42,22 +42,24 @@ Prisoner returns from hospital to prison; note the REL is **optional**:
 ## Mismatch scenarios (encountered so far)
 
 1. There is a bug in Nomis where an offender is readmitted on an old booking, and
-the seq of this booking is not set to '1'. prisoner-search wrongly get stale data from the other booking and fails
+the seq of this booking is not set to '1'. prisoner-search wrongly gets stale data from the other booking and fails
 to detect the movement and does not raise an event.
 1. A prisoner can be released twice, i.e. have duplicate REL movements, with just one release domain event.
 1. A rapid (within minutes) double merge may be related to only one domain event (e.g. an ADM).
 
-It is also possible for a user to set a released or active-out prisoner to IN without creating a movement. This does not cause a mismatch but may result in a prisoner-search EVENTS_UNKNOWN_MOVEMENT app-insights event.
- 
+It is also possible for a user to:
+1. set a released or active-out prisoner to IN without creating a movement. This does not cause a mismatch but may result in a prisoner-search EVENTS_UNKNOWN_MOVEMENT app-insights event.
+1. change the movement reason when admitting a prisoner as part of a transfer via court or TAP.
+This reason is pre-populated as TRNCRT or TRNTAP in P-Nomis but the user can change it to something else, and if they do then again a EVENTS_UNKNOWN_MOVEMENT will occur.
 
 # Cronjob
 
 Every 2 hours a housekeeping job runs which:
 - Matches up any pairs of db rows which were missed;
 - Checks the database for any remaining events that were not matched;
-- purges old db rowslooks for unmatched pairs of db rows.
+- purges old db rows.
 
-These unmatched rows can occur when
+Unmatched rows can occur when
 - rows are inserted simultaneously for the 2 events so each does not see the other already in the db;
 - in the restricted-patients scenario : there may be a EXTERNAL_MOVEMENT-CHANGED REL where previous event was a REL-HP,
 with the corresponding restricted-patients.patient.removed, or possibly just the latter.

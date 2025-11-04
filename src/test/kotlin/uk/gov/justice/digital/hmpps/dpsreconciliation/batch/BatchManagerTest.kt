@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.context.ConfigurableApplicationContext
@@ -27,7 +28,7 @@ class BatchManagerTest {
 
     batchManager.onApplicationEvent(event)
 
-    verify(receiveService).detect()
+    verify(receiveService).detectNonMatches(any(), any())
     verify(context).close()
   }
 
