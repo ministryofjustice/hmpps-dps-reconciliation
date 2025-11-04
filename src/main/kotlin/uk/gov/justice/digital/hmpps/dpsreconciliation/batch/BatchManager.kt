@@ -10,6 +10,7 @@ import org.springframework.context.event.ContextRefreshedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
+import java.time.LocalDateTime
 
 enum class BatchType {
   DETECT_NON_MATCHES,
@@ -28,9 +29,19 @@ class BatchManager(
   @WithSpan
   fun runBatchJob(@SpanAttribute batchType: BatchType) = runBlocking {
     when (batchType) {
-      BatchType.DETECT_NON_MATCHES -> receiveService.detect()
+      BatchType.DETECT_NON_MATCHES -> detect()
     }
   }
 
   private fun ContextRefreshedEvent.closeApplication() = (this.applicationContext as ConfigurableApplicationContext).close()
+
+  private suspend fun detect(): String {
+    val startCreatedDate = LocalDateTime.now().minusHours(4)
+    val endCreatedDate = LocalDateTime.now().minusHours(2)
+
+    // Note these need to be run in separate transactions:
+    receiveService.purgeOldMatchedRecords()
+    receiveService.batchMatch(startCreatedDate, endCreatedDate)
+    return receiveService.detectNonMatches(startCreatedDate, endCreatedDate)
+  }
 }

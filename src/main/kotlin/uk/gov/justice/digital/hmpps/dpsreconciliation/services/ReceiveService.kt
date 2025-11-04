@@ -407,15 +407,6 @@ class ReceiveService(
     matchUpMergeReceives(nonMatches)
   }
 
-  suspend fun detect(): String {
-    val startCreatedDate = LocalDateTime.now().minusHours(4)
-    val endCreatedDate = LocalDateTime.now().minusHours(2)
-
-    purgeOldMatchedRecords()
-    batchMatch(startCreatedDate, endCreatedDate)
-    return detectNonMatches(startCreatedDate, endCreatedDate)
-  }
-
   fun detectNonMatches(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime): String {
     val nonMatches = repository.findByCreatedDateIsBetweenAndMatched(
       startCreatedDate,
