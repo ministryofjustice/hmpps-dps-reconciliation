@@ -11,6 +11,7 @@ import org.mockito.kotlin.reset
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.http.HttpHeaders
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -40,6 +41,7 @@ internal const val TEST_OCCURRED_AT_OFFSET_TIME = "2025-05-13T15:38:48.0Z"
 @ExtendWith(HmppsAuthApiExtension::class, PrisonApiExtension::class)
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ActiveProfiles("test")
+@AutoConfigureWebTestClient
 abstract class IntegrationTestBase {
   val expectedDomainTime: LocalDateTime = OffsetDateTime.parse(TEST_OCCURRED_AT_OFFSET_TIME).atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
 
