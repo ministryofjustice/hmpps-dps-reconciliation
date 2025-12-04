@@ -82,12 +82,12 @@ class ReconciliationResourceIntTest : IntegrationTestBase() {
       eq("non-match-event"),
       check {
         assertThat(it["count"]).isEqualTo("2")
-        assertThat(it["A1234AA"]).contains("matched=false")
-        assertThat(it["A1234AA"]).contains("domainReason=test1")
-        assertThat(it["A1234AA"]).contains("nomsNumber=A1234AA")
-        assertThat(it["A1234AB"]).contains("matched=false")
-        assertThat(it["A1234AB"]).contains("domainReason=test2")
-        assertThat(it["A1234AB"]).contains("nomsNumber=A1234AB")
+        assertThat(it["1"]).contains("matched=false")
+        assertThat(it["1"]).contains("domainReason=test1")
+        assertThat(it["1"]).contains("nomsNumber=A1234AA")
+        assertThat(it["2"]).contains("matched=false")
+        assertThat(it["2"]).contains("domainReason=test2")
+        assertThat(it["2"]).contains("nomsNumber=A1234AB")
       },
       isNull(),
     )

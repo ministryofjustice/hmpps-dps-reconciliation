@@ -1,5 +1,7 @@
 package uk.gov.justice.digital.hmpps.dpsreconciliation.listeners
 
+import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.groups.Tuple
 import org.awaitility.kotlin.await
@@ -11,6 +13,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.IntegrationTestBase
@@ -159,11 +162,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       )
 
       await untilAsserted {
-        verify(telemetryClient).trackEvent(
-          eq("offender-event"),
-          anyMap(),
-          isNull(),
-        )
+        prisonApi.verify(getRequestedFor(urlPathEqualTo("/api/movements/booking/$bookingId")))
       }
 
       assertThat(
@@ -174,6 +173,8 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
           false,
         ),
       ).isEmpty()
+
+      verifyNoInteractions(telemetryClient)
     }
 
     @Test
@@ -277,12 +278,9 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
       )
 
       await untilAsserted {
-        verify(telemetryClient).trackEvent(
-          eq("offender-event-update"),
-          anyMap(),
-          isNull(),
-        )
+        prisonApi.verify(getRequestedFor(urlPathEqualTo("/api/movements/booking/$bookingId")))
       }
+      verifyNoInteractions(telemetryClient)
     }
 
     @Test

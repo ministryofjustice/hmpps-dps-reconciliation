@@ -43,14 +43,19 @@ Prisoner returns from hospital to prison; note the REL is **optional**:
 
 1. There is a bug in Nomis where an offender is readmitted on an old booking, and
 the seq of this booking is not set to '1'. prisoner-search wrongly gets stale data from the other booking and fails
-to detect the movement and does not raise an event.
-1. A prisoner can be released twice, i.e. have duplicate REL movements, with just one release domain event.
+to detect the movement and does not raise an event. This is not a race condition, it can persist for minutes e.g. A5024DJ @ 28 nov 2025 08:24
+1. A prisoner can be released twice, i.e. have duplicate REL movements, with just one release domain event e.g. A5660AN @ Nov 25 10:30
 1. A rapid (within minutes) double merge may be related to only one domain event (e.g. an ADM).
+1. A booking.moved event can cause a domain release + receive but no external movement records. The receive event should be an READMISSION_SWITCH_BOOKING but currently (Nov 2025) due to SDIT-3065, may not be.
+1. Very rarely hmpps-dps-reconciliation can receive an event more than once, though everything was fine, e.g. A4995EV at 2025-11-17 when received ADM event twice
 
 It is also possible for a user to:
 1. set a released or active-out prisoner to IN without creating a movement. This does not cause a mismatch but may result in a prisoner-search EVENTS_UNKNOWN_MOVEMENT app-insights event.
 1. change the movement reason when admitting a prisoner as part of a transfer via court or TAP.
-This reason is pre-populated as TRNCRT or TRNTAP in P-Nomis but the user can change it to something else, and if they do then again a EVENTS_UNKNOWN_MOVEMENT will occur.
+This reason is pre-populated as TRNCRT or TRNTAP in P-Nomis but the user can change it to something else, and if they do then again an EVENTS_UNKNOWN_MOVEMENT will occur.
+1. add a movement with a slightly earlier movement datetime than the previous movement, possibly after a merge which has also caused movements to be out of sequence in the sense that the sequence numbers are 
+not totally in the same order as the movement datetimes. This fools the reconciliation into e.g. ignoring an ADM as the previous by date is not a REL (though by sequence it is).
+1. Receive an offender on multiple new bookings at the same time, e.g. A3243AT at 14-NOV-2025 23:46
 
 # Cronjob
 
