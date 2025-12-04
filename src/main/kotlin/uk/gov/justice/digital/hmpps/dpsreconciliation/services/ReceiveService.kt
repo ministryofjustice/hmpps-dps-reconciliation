@@ -43,13 +43,12 @@ class ReceiveService(
     if (thisMovement.modifiedDateTime != null && thisMovement.modifiedDateTime != thisMovement.createdDateTime) {
       // When event is an insert, the modifiedDateTime is either null or modifiedDateTime = createdDateTime
       log.info("Detected an update in {}", thisMovement)
-      telemetryClient.trackEvent("offender-event-update", objectMapper.convertValue<Map<String, String>>(message))
       return
     }
 
     val previousMovement: BookingMovement? = findPreviousMovement(
       message,
-      movements.sortedBy { it.movementDateTime },
+      movements.sortedBy { it.sequence },
     )
 
     var matchOutcome = ""
@@ -65,8 +64,9 @@ class ReceiveService(
           val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
             message.offenderIdDisplay!!,
             MatchType.RECEIVED,
-            LocalDateTime.now().minusHours(2),
-            // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
+            LocalDateTime.now().minusMinutes(1),
+            // The domain event will normally arrive after the nomis event
+            // If the domain event did arrive first (about 400 per month) it is 'always' within a minute and mostly < 1s
             false,
           ).filter {
             it.domainReason != PrisonerReceiveReason.POST_MERGE_ADMISSION.name // POST_MERGE_ADMISSIONs only match merge events
@@ -141,13 +141,15 @@ class ReceiveService(
         }
       }
     }
-    telemetryClient.trackEvent(
-      "offender-event",
-      objectMapper.convertValue<Map<String, String>>(message) + mapOf(
-        "matchType" to (message.movementType ?: "Unknown"),
-        "matchOutcome" to matchOutcome,
-      ),
-    )
+    if (matchOutcome.isNotEmpty()) {
+      telemetryClient.trackEvent(
+        "offender-event",
+        objectMapper.convertValue<Map<String, String>>(message) + mapOf(
+          "matchType" to (message.movementType ?: "Unknown"),
+          "matchOutcome" to matchOutcome,
+        ),
+      )
+    }
   }
 
   fun offenderMergeHandler(message: MergeMessage) {
@@ -420,7 +422,8 @@ class ReceiveService(
         "count" to nonMatches.size.toString(),
       ) + nonMatches
         .take(20)
-        .associate { it.nomsNumber to it.toString() },
+        .mapIndexed { index, it -> index + 1 to it }
+        .associate { it.first.toString() to it.second.toString() },
     )
     return "Found ${nonMatches.size} non-matching events"
   }
