@@ -4,8 +4,8 @@ package uk.gov.justice.digital.hmpps.dpsreconciliation.listeners
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL
-import com.fasterxml.jackson.databind.PropertyNamingStrategies
-import com.fasterxml.jackson.databind.annotation.JsonNaming
+import tools.jackson.databind.PropertyNamingStrategies
+import tools.jackson.databind.annotation.JsonNaming
 
 @JsonNaming(value = PropertyNamingStrategies.UpperCamelCaseStrategy::class)
 @JsonInclude(NON_NULL)
