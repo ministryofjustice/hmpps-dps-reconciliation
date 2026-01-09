@@ -45,6 +45,7 @@ spring:
   web:
     error:
       include-message: always
+
 springdoc:
   api-docs:
     enabled: false
