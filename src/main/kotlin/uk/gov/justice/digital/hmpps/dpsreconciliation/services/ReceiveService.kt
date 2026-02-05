@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
-import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.convertValue
 import uk.gov.justice.digital.hmpps.dpsreconciliation.config.trackEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
@@ -22,7 +22,7 @@ class ReceiveService(
   val prisonApi: PrisonApi,
   val telemetryClient: TelemetryClient,
   val repository: MatchingEventPairRepository,
-  val objectMapper: ObjectMapper,
+  val jsonMapper: JsonMapper,
 ) {
   private companion object {
     val log: Logger = LoggerFactory.getLogger(this::class.java)
@@ -36,7 +36,7 @@ class ReceiveService(
     val thisMovement = movements.find { it.sequence == message.movementSeq }
       ?: run {
         log.info("Detected a deletion of {} (cannot find)", message)
-        telemetryClient.trackEvent("offender-event-deletion", objectMapper.convertValue<Map<String, String>>(message))
+        telemetryClient.trackEvent("offender-event-deletion", jsonMapper.convertValue<Map<String, String>>(message))
         return
       }
 
@@ -144,7 +144,7 @@ class ReceiveService(
     if (matchOutcome.isNotEmpty()) {
       telemetryClient.trackEvent(
         "offender-event",
-        objectMapper.convertValue<Map<String, String>>(message) + mapOf(
+        jsonMapper.convertValue<Map<String, String>>(message) + mapOf(
           "matchType" to (message.movementType ?: "Unknown"),
           "matchOutcome" to matchOutcome,
         ),
@@ -194,7 +194,7 @@ class ReceiveService(
       }
       telemetryClient.trackEvent(
         "merge-event",
-        objectMapper.convertValue<Map<String, String>>(message) +
+        jsonMapper.convertValue<Map<String, String>>(message) +
           mapOf("matchOutcome" to matchOutcome),
       )
     }
