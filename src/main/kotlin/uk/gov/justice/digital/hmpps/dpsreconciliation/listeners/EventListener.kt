@@ -4,13 +4,13 @@ import io.awspring.cloud.sqs.annotation.SqsListener
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.readValue
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
 
 @Service
 class EventListener(
-  val objectMapper: ObjectMapper,
+  val jsonMapper: JsonMapper,
   val receiveService: ReceiveService,
 ) {
   private companion object {
@@ -20,7 +20,7 @@ class EventListener(
   @SqsListener("reconciliation", factory = "hmppsQueueContainerFactoryProxy")
   fun onMessage(message: String) {
     log.debug("Received event message {}", message)
-    val sqsMessage: SQSMessage = objectMapper.readValue(message)
+    val sqsMessage: SQSMessage = jsonMapper.readValue(message)
     when (sqsMessage.Type) {
       "Notification" -> {
         val eventType = sqsMessage.MessageAttributes!!.eventType.Value
@@ -48,5 +48,5 @@ class EventListener(
     }
   }
 
-  private inline fun <reified T> String.fromJson(): T = objectMapper.readValue(this)
+  private inline fun <reified T> String.fromJson(): T = jsonMapper.readValue(this)
 }
