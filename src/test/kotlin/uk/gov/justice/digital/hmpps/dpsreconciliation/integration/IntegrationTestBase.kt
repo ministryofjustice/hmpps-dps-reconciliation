@@ -21,6 +21,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
+import software.amazon.awssdk.services.sqs.model.SendMessageResponse
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.LocalStackContainer.setLocalStackProperties
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
@@ -112,6 +113,9 @@ abstract class IntegrationTestBase {
       }
     }
   }
+
+  fun sendMessage(message: String): SendMessageResponse = awsSqsReconciliationClient
+    .sendMessage(SendMessageRequest.builder().queueUrl(reconciliationUrl).messageBody(message).build()).get()
 }
 
 internal fun SqsAsyncClient.sendMessage(queueOffenderEventsUrl: String, message: String) = sendMessage(
@@ -160,7 +164,7 @@ internal fun validOffenderMergeMessage(offenderNo: String, bookingId: Long, even
   message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:56\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\",\"offenderId\":\"5383902\",\"type\":\"MERGE\",\"nomisEventType\":\"BOOK_UPD_OASYS\",\"previousOffenderIdDisplay\":\"A9220FG\",\"previousBookingNumber\":\"V24071\"}""",
 )
 
-private fun validMessage(eventType: String, message: String) =
+internal fun validMessage(eventType: String, message: String) =
   """
   {
     "Type": "Notification",
