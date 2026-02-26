@@ -110,7 +110,11 @@ class ReceiveService(
           LocalDateTime.now().minusHours(2),
           false,
         )
-        if (existing.isNotEmpty()) {
+        if (
+          existing.isNotEmpty()
+           && existing.first().domainReason != PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
+          // Leave RP releases to the batch matcher: 'existing' could be an orphan
+        ) {
           if (existing.size == 1) {
             matchOutcome = "matched"
           } else {
