@@ -111,8 +111,8 @@ class ReceiveService(
           false,
         )
         if (
-          existing.isNotEmpty()
-           && existing.first().domainReason != PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
+          existing.isNotEmpty() &&
+          existing.first().domainReason != PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
           // Leave RP releases to the batch matcher: 'existing' could be an orphan
         ) {
           if (existing.size == 1) {
