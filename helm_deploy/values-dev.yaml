@@ -25,9 +25,6 @@ generic-prometheus-alerts:
   businessHoursOnly: true
   alertSeverity: syscon-nonprod
   rdsAlertsDatabases:
-    cloud-platform-1b38ce7c35b6c33c: "DPS reconcilation"
+    cloud-platform-1b38ce7c35b6c33c: "DPS reconciliation"
   sqsNumberAlertQueueNames:
     - "syscon-devs-dev-hmpps_dps_reconciliation_dl_queue"
-
-cron:
-  retry_dlqs_schedule: "*/10 8-17 * * 1-5" # UTC

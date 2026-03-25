@@ -64,6 +64,8 @@ server:
   shutdown: graceful
 
 hmpps.sqs:
+  queueAdminRole: ROLE_SYSCON__QUEUE_ADMIN
+  protectRetryAll: true
   queues:
     reconciliation:
       errorVisibilityTimeout: 2

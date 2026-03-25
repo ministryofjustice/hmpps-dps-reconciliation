@@ -21,6 +21,6 @@ generic-service:
 generic-prometheus-alerts:
   alertSeverity: syscon
   rdsAlertsDatabases:
-    cloud-platform-b58b51dd02b491a0: "DPS reconcilation"
+    cloud-platform-b58b51dd02b491a0: "DPS reconciliation"
   sqsNumberAlertQueueNames:
     - "syscon-devs-prod-hmpps_dps_reconciliation_dl_queue"
