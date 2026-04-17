@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.1.2"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.2.1"
   kotlin("plugin.spring") version "2.3.20"
   kotlin("plugin.jpa") version "2.3.20"
 }
@@ -14,6 +14,9 @@ dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.3.0")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
+  constraints {
+    implementation("org.webjars:swagger-ui:5.32.2")
+  }
 
   runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
   runtimeOnly("org.postgresql:postgresql")
