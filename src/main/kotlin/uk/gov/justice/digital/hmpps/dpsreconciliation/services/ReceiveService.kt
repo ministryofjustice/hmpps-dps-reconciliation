@@ -14,6 +14,7 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.BOOKING_MOVED_EVENT
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MERGE_EVENT
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -704,7 +705,7 @@ data class BookingMovedMessage(
   val offenderId: Long? = null,
   val previousOffenderIdDisplay: String? = null,
   val previousOffenderId: Long? = null,
-  val lastAdmissionDate: LocalDateTime? = null,
+  val lastAdmissionDate: LocalDate? = null,
   val bookingStartDateTime: LocalDateTime? = null,
 )
 
