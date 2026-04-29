@@ -24,6 +24,7 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderM
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderReleaseMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension.Companion.prisonApi
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
+import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MERGE_EVENT
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ExternalPrisonerMovementMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
 import java.time.LocalDateTime
@@ -245,7 +246,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
             "REASON",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = matched",
+            "matchOutcome = matched in externalMovementHandler",
           ),
         )
     }
@@ -483,7 +484,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = matched",
+            "matchOutcome = matched in externalMovementHandler",
           ),
         )
     }
@@ -504,7 +505,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
 
       await untilAsserted {
         verify(telemetryClient).trackEvent(
-          eq("merge-event"),
+          eq("merge-offender-event"),
           anyMap(),
           isNull(),
         )
@@ -530,7 +531,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
             MatchType.RECEIVED,
             offenderNo,
             bookingId,
-            "MERGE-EVENT",
+            MERGE_EVENT,
             LocalDateTime.parse("2025-05-13T15:38:56"),
             false,
           ),
@@ -556,7 +557,7 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
           .messageBody(validOffenderMergeMessage(offenderNo, bookingId)).build(),
       )
       await untilAsserted {
-        verify(telemetryClient).trackEvent(eq("merge-event"), anyMap(), isNull())
+        verify(telemetryClient).trackEvent(eq("merge-offender-event"), anyMap(), isNull())
       }
 
       assertThat(
@@ -584,10 +585,10 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
             "POST_MERGE_ADMISSION",
             expectedDomainTime,
             bookingId,
-            "MERGE-EVENT",
+            MERGE_EVENT,
             LocalDateTime.parse("2025-05-13T15:38:56"),
             true,
-            "matchOutcome = matched",
+            "matchOutcome = matched in offenderMergeHandler",
           ),
         )
     }

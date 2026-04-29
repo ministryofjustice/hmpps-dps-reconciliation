@@ -144,7 +144,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             "REASON",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = matched",
+            "matchOutcome = matched in prisonerDomainReceiveHandler",
           ),
         )
     }
@@ -182,7 +182,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
         verify(telemetryClient).trackEvent(
           eq("domain-event"),
           check {
-            assertThat(it["matchOutcome"]).isEqualTo("multiple: 2")
+            assertThat(it["matchOutcome"]).isEqualTo("multiple: 2 in prisonerDomainReceiveHandler")
           },
           isNull(),
         )
@@ -216,7 +216,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             "REASON",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = multiple: 2",
+            "matchOutcome = multiple: 2 in prisonerDomainReceiveHandler",
           ),
         )
     }
@@ -290,7 +290,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = matched",
+            "matchOutcome = matched in prisonerDomainReleaseHandler",
           ),
         )
     }
@@ -329,7 +329,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
           eq("domain-event"),
           check {
             assertThat(it["type"]).isEqualTo("RELEASED")
-            assertThat(it["matchOutcome"]).isEqualTo("multiple: 2")
+            assertThat(it["matchOutcome"]).isEqualTo("multiple: 2 in prisonerDomainReleaseHandler")
           },
           isNull(),
         )
@@ -363,7 +363,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = multiple: 2",
+            "matchOutcome = multiple: 2 in prisonerDomainReleaseHandler",
           ),
         )
     }
@@ -444,7 +444,7 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
             "RELEASED",
             LocalDateTime.parse("2025-05-13T15:38:30"),
             true,
-            "matchOutcome = matched",
+            "matchOutcome = matched in restrictedPatientRemovedHandler",
           ),
         )
     }
@@ -454,8 +454,8 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
   inner class Scenarios {
     @Test
     fun `RP released from hospital to prison then released`() {
-      val bookingId = 2818493L
-      val prisonerNumber = "A5178EX"
+      val bookingId = 1234567L
+      val prisonerNumber = "A1234ZZ"
 
       prisonApi.stubGetMovementsForBooking(
         bookingId,
@@ -495,12 +495,6 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
          }
        ]
         """,
-        /*
-	2818493		20/07/2006 00:00:00	1	ADM	O	IN	FNI	    FNI	    N	P_PHILLIPS	18-JAN-2023 08:35:32.538650704	18-JAN-2023 08:35:32.634425000	MERGE	New Booking
-	2818493		20/07/2006 00:00:00	2	REL	HP	OUT	FNI	    KSWRTH	N	P_PHILLIPS	18-JAN-2023 08:35:32.647803983	12-FEB-2026 15:47:10.455883000	OIDADMIS	Psychiatric Hospital Discharge to Kneesworth House
-	2818493		12/02/2026 15:41:26	3	ADM	R	IN	KSWRTH	FNI	    N	JQL62M	    12-FEB-2026 15:47:10.529401000	12-FEB-2026 15:52:12.688469000	OIDRELEA	Deceased whilst at outside institution
-	2818493		12/02/2026 15:48:12	4	REL	DEC	OUT	FNI	    OUT	    Y	JQL62M	    12-FEB-2026 15:52:12.704371000		                            OIDRELEA	Mr Lees died on the 12/10/23 at Kneesworth Hospital but remained as an active prisoner on HMP Full Sutton's caseload - this entry now rectifies that error.
-         */
       )
       sendMessage(
         validMessage(

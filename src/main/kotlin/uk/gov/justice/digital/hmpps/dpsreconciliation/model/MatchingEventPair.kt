@@ -22,6 +22,7 @@ data class MatchingEventPair(
   val matchType: MatchType,
 
   val nomsNumber: String,
+  var relatedNomsNumber: String? = null,
 
   var domainReason: String? = null,
   var domainTime: LocalDateTime? = null,
@@ -60,6 +61,7 @@ data class MatchingEventPair(
   override fun toString(): String = "MatchingEventPair(" +
     "id=$id, " +
     "nomsNumber=$nomsNumber, " +
+    (if (relatedNomsNumber == null) "" else "relatedNomsNumber=$relatedNomsNumber, ") +
     "matchType=$matchType, " +
     "createdDate=$createdDate, " +
     (if (domainTime == null) "" else "domainTime=$domainTime, ") +
@@ -70,8 +72,12 @@ data class MatchingEventPair(
     (if (previousOffenderDirection == null) "" else "previousOffenderDirection=$previousOffenderDirection, ") +
     (if (previousOffenderTime == null) "" else "previousOffenderTime=$previousOffenderTime, ") +
     (if (previousOffenderReason == null) "" else "previousOffenderReason=$previousOffenderReason, ") +
+    (if (comment == null) "" else "comment=$comment, ") +
     "matched=$matched" +
     ")"
+
+  fun isDomainOnly(): Boolean = offenderTime == null
+  fun isOffenderOnly(): Boolean = domainTime == null
 }
 
 enum class MatchType {

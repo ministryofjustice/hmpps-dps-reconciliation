@@ -11,6 +11,8 @@ import tools.jackson.module.kotlin.convertValue
 import uk.gov.justice.digital.hmpps.dpsreconciliation.config.trackEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
+import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.BOOKING_MOVED_EVENT
+import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MERGE_EVENT
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -73,10 +75,10 @@ class ReceiveService(
           }
           if (existing.isNotEmpty()) {
             if (existing.size == 1) {
-              matchOutcome = "matched"
+              matchOutcome = "matched in externalMovementHandler"
             } else {
               log.warn("externalMovementHandler() ADM: Unexpected multiple matches: {}", existing)
-              matchOutcome = "multiple: ${existing.size}"
+              matchOutcome = "multiple: ${existing.size} in externalMovementHandler"
             }
             with(existing[0]) {
               offenderReason = message.movementReasonCode
@@ -96,9 +98,10 @@ class ReceiveService(
                 previousOffenderReason = previousMovement?.movementReasonCode,
                 previousOffenderTime = previousMovement?.movementDateTime,
                 previousOffenderDirection = previousMovement?.directionCode,
+                comment = "matchOutcome = saved in externalMovementHandler",
               ),
             )
-            matchOutcome = "saved"
+            matchOutcome = "saved in externalMovementHandler"
           }
         }
       }
@@ -116,10 +119,10 @@ class ReceiveService(
           // Leave RP releases to the batch matcher: 'existing' could be an orphan
         ) {
           if (existing.size == 1) {
-            matchOutcome = "matched"
+            matchOutcome = "matched in externalMovementHandler"
           } else {
             log.warn("externalMovementHandler() REL: Unexpected multiple matches: {}", existing)
-            matchOutcome = "multiple: ${existing.size}"
+            matchOutcome = "multiple: ${existing.size} in externalMovementHandler"
           }
           with(existing[0]) {
             offenderReason = message.movementReasonCode
@@ -139,9 +142,10 @@ class ReceiveService(
               previousOffenderReason = previousMovement?.movementReasonCode,
               previousOffenderTime = previousMovement?.movementDateTime,
               previousOffenderDirection = previousMovement?.directionCode,
+              comment = "matchOutcome = saved in externalMovementHandler",
             ),
           )
-          matchOutcome = "saved"
+          matchOutcome = "saved in externalMovementHandler"
         }
       }
     }
@@ -172,17 +176,18 @@ class ReceiveService(
       }
       if (existing.isNotEmpty()) {
         if (existing.size == 1) {
-          matchOutcome = "matched"
+          matchOutcome = "matched in offenderMergeHandler"
         } else {
           log.warn("offenderMergeHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
-          matchOutcome = "multiple: ${existing.size}"
+          matchOutcome = "multiple: ${existing.size} in offenderMergeHandler"
         }
         with(existing[0]) {
-          offenderReason = "MERGE-EVENT"
+          offenderReason = MERGE_EVENT
           offenderTime = message.eventDatetime
           offenderBookingId = message.bookingId
           matched = true
           comment = "matchOutcome = $matchOutcome"
+          relatedNomsNumber = message.previousOffenderIdDisplay
         }
       } else {
         repository.save(
@@ -190,18 +195,67 @@ class ReceiveService(
             matchType = MatchType.RECEIVED,
             nomsNumber = message.offenderIdDisplay,
             offenderBookingId = message.bookingId,
-            offenderReason = "MERGE-EVENT",
+            offenderReason = MERGE_EVENT,
             offenderTime = message.eventDatetime,
+            relatedNomsNumber = message.previousOffenderIdDisplay,
+            comment = "saved in offenderMergeHandler",
           ),
         )
-        matchOutcome = "saved"
+        matchOutcome = "saved in offenderMergeHandler"
       }
       telemetryClient.trackEvent(
-        "merge-event",
-        jsonMapper.convertValue<Map<String, String>>(message) +
-          mapOf("matchOutcome" to matchOutcome),
+        "merge-offender-event",
+        jsonMapper.convertValue<Map<String, String>>(message) + mapOf("matchOutcome" to matchOutcome),
       )
     }
+  }
+
+  fun offenderBookingMovedHandler(message: BookingMovedMessage) {
+    log.debug("offenderBookingMovedHandler {}", message)
+
+    var matchOutcome: String
+    val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
+      message.offenderIdDisplay!!,
+      MatchType.RECEIVED,
+      LocalDateTime.now().minusHours(2),
+      // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
+      false,
+    ).filter {
+      it.domainReason == BOOKING_MOVED_EVENT
+    }
+    if (existing.isNotEmpty()) {
+      if (existing.size == 1) {
+        matchOutcome = "matched in offenderBookingMovedHandler"
+      } else {
+        log.warn("offenderBookingMovedHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+        matchOutcome = "multiple: ${existing.size} in offenderBookingMovedHandler"
+      }
+      with(existing[0]) {
+        offenderReason = BOOKING_MOVED_EVENT
+        offenderTime = message.eventDatetime
+        offenderBookingId = message.bookingId
+        matched = true
+        comment = "matchOutcome = $matchOutcome"
+      }
+    } else {
+      repository.save(
+        MatchingEventPair(
+          matchType = MatchType.RECEIVED,
+          nomsNumber = message.offenderIdDisplay,
+          offenderBookingId = message.bookingId,
+          offenderReason = BOOKING_MOVED_EVENT,
+          offenderTime = message.eventDatetime,
+          relatedNomsNumber = message.previousOffenderIdDisplay,
+          comment = "saved in offenderBookingMovedHandler",
+        ),
+      )
+      matchOutcome = "saved in offenderBookingMovedHandler"
+    }
+    telemetryClient.trackEvent(
+      "booking-moved-offender-event",
+      jsonMapper.convertValue<Map<String, String>>(message) + mapOf("matchOutcome" to matchOutcome),
+    )
+    log.debug("offenderBookingMovedHandler EXIT matchOutcome={}", matchOutcome)
   }
 
   fun purgeOldMatchedRecords() {
@@ -224,7 +278,7 @@ class ReceiveService(
     log.debug("prisonerDomainReceiveHandler {}", message)
 
     val messageDateTimeLocal = message.occurredAt.atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
-    var matchOutcome: String
+    var matchOutcome = ""
 
     when (message.additionalInformation.reason) {
       PrisonerReceiveReason.NEW_ADMISSION,
@@ -242,10 +296,10 @@ class ReceiveService(
         }
         if (existing.isNotEmpty()) {
           if (existing.size == 1) {
-            matchOutcome = "matched"
+            matchOutcome = "matched in prisonerDomainReceiveHandler"
           } else {
             log.warn("prisonerDomainReceiveHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
-            matchOutcome = "multiple: ${existing.size}"
+            matchOutcome = "multiple: ${existing.size} in prisonerDomainReceiveHandler"
           }
           with(existing[0]) {
             domainReason = message.additionalInformation.reason.name
@@ -260,9 +314,10 @@ class ReceiveService(
               nomsNumber = message.additionalInformation.nomsNumber,
               domainReason = message.additionalInformation.reason.name,
               domainTime = messageDateTimeLocal,
+              comment = "saved in prisonerDomainReceiveHandler",
             ),
           )
-          matchOutcome = "saved"
+          matchOutcome = "saved in prisonerDomainReceiveHandler"
         }
         telemetryClient.trackEvent(
           "domain-event",
@@ -286,7 +341,7 @@ class ReceiveService(
   fun prisonerDomainReleaseHandler(message: PrisonerReleaseDomainEvent) {
     log.debug("prisonerDomainReleaseHandler {}", message)
     val messageDateTimeLocal = message.occurredAt.atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
-    var matchOutcome: String
+    var matchOutcome = ""
 
     when (message.additionalInformation.reason) {
       PrisonerReleaseReason.RELEASED,
@@ -300,10 +355,10 @@ class ReceiveService(
         )
         if (existing.isNotEmpty()) {
           if (existing.size == 1) {
-            matchOutcome = "matched"
+            matchOutcome = "matched in prisonerDomainReleaseHandler"
           } else {
             log.warn("prisonerDomainReleaseHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
-            matchOutcome = "multiple: ${existing.size}"
+            matchOutcome = "multiple: ${existing.size} in prisonerDomainReleaseHandler"
           }
           with(existing[0]) {
             domainReason = message.additionalInformation.reason.name
@@ -318,9 +373,10 @@ class ReceiveService(
               nomsNumber = message.additionalInformation.nomsNumber,
               domainReason = message.additionalInformation.reason.name,
               domainTime = messageDateTimeLocal,
+              comment = "saved in prisonerDomainReleaseHandler",
             ),
           )
-          matchOutcome = "saved"
+          matchOutcome = "saved in prisonerDomainReleaseHandler"
         }
         telemetryClient.trackEvent(
           "domain-event",
@@ -369,10 +425,10 @@ class ReceiveService(
 
     if (existing.isNotEmpty()) {
       if (existing.size == 1) {
-        matchOutcome = "matched"
+        matchOutcome = "matched in restrictedPatientRemovedHandler"
       } else {
         log.warn("restrictedPatientRemovedHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
-        matchOutcome = "multiple: ${existing.size}"
+        matchOutcome = "multiple: ${existing.size} in restrictedPatientRemovedHandler"
       }
       with(existing[0]) {
         domainReason = PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name
@@ -387,9 +443,10 @@ class ReceiveService(
           nomsNumber = message.additionalInformation.prisonerNumber,
           domainReason = PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name,
           domainTime = messageDateTimeLocal,
+          comment = "saved in restrictedPatientRemovedHandler",
         ),
       )
-      matchOutcome = "saved"
+      matchOutcome = "saved in restrictedPatientRemovedHandler"
     }
     telemetryClient.trackEvent(
       "restricted-patient-event",
@@ -403,6 +460,58 @@ class ReceiveService(
     )
   }
 
+  fun prisonerDomainBookingMovedHandler(message: BookingMovedDomainEvent) {
+    log.debug("prisonerDomainBookingMovedHandler {}", message)
+
+    val messageDateTimeLocal = message.occurredAt.atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
+    var matchOutcome = ""
+
+    val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
+      message.additionalInformation.movedToNomsNumber,
+      MatchType.RECEIVED,
+      LocalDateTime.now().minusHours(2),
+      false,
+    ).filter { it.offenderReason == BOOKING_MOVED_EVENT }
+
+    if (existing.isNotEmpty()) {
+      if (existing.size == 1) {
+        matchOutcome = "matched in prisonerDomainBookingMovedHandler"
+      } else {
+        log.warn("prisonerDomainBookingMovedHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+        matchOutcome = "multiple: ${existing.size} in prisonerDomainBookingMovedHandler"
+      }
+      with(existing[0]) {
+        domainReason = BOOKING_MOVED_EVENT
+        domainTime = messageDateTimeLocal
+        matched = true
+        comment = "matchOutcome = $matchOutcome"
+      }
+    } else {
+      repository.save(
+        MatchingEventPair(
+          matchType = MatchType.RECEIVED,
+          nomsNumber = message.additionalInformation.movedToNomsNumber,
+          domainReason = BOOKING_MOVED_EVENT,
+          domainTime = messageDateTimeLocal,
+          relatedNomsNumber = message.additionalInformation.movedFromNomsNumber,
+          comment = "saved in prisonerDomainBookingMovedHandler",
+        ),
+      )
+      matchOutcome = "saved in prisonerDomainBookingMovedHandler"
+    }
+    telemetryClient.trackEvent(
+      "booking-moved-domain-event",
+      mapOf(
+        "type" to MatchType.RECEIVED.name,
+        "occurredAt" to messageDateTimeLocal.toString(),
+        "nomsNumber" to message.additionalInformation.movedToNomsNumber,
+        "reason" to "booking-moved-event",
+        "matchOutcome" to matchOutcome,
+      ) + mapOf("movedFromNomsNumber" to message.additionalInformation.movedFromNomsNumber),
+    )
+    log.debug("prisonerDomainBookingMovedHandler EXIT matchOutcome={}", matchOutcome)
+  }
+
   fun batchMatch(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime) {
     val nonMatches = repository.findByCreatedDateIsBetweenAndMatched(
       startCreatedDate,
@@ -411,6 +520,11 @@ class ReceiveService(
     )
     matchUpHospitalReleases(nonMatches)
     matchUpMergeReceives(nonMatches)
+
+    matchUpBookingMovedReceivesAndReleases(
+      nonMatches,
+      repository.findByCreatedDateIsBetweenAndIsBookingMoved(startCreatedDate, endCreatedDate),
+    )
   }
 
   fun detectNonMatches(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime): String {
@@ -437,8 +551,8 @@ class ReceiveService(
       .values
       .forEach { value ->
         if (isUnmatchedRelease(value)) {
-          val domainEvent = if (value[0].offenderTime == null) value.first() else value.last()
-          val offenderEvent = if (value[0].offenderTime == null) value.last() else value.first()
+          val domainEvent = if (value[0].isDomainOnly()) value.first() else value.last()
+          val offenderEvent = if (value[0].isDomainOnly()) value.last() else value.first()
           if (
             domainEvent.domainReason == PrisonerReleaseReason.REMOVED_FROM_HOSPITAL.name &&
             offenderEvent.previousOffenderReason == "HP"
@@ -453,6 +567,7 @@ class ReceiveService(
             offenderEvent.domainReason = domainEvent.domainReason
             offenderEvent.domainTime = domainEvent.domainTime
             offenderEvent.matched = true
+            offenderEvent.comment = "Matched with $domainEvent in prisonerDomainBookingMovedHandler isUnmatchedRelease"
             repository.delete(domainEvent)
           }
         } else if (isReleaseDomainOrphan(value)) {
@@ -466,6 +581,7 @@ class ReceiveService(
             )
             domainEvent.offenderReason = "RP-EVENT"
             domainEvent.matched = true
+            domainEvent.comment = "Matched as orphan in prisonerDomainBookingMovedHandler isReleaseDomainOrphan"
           }
         }
       }
@@ -480,12 +596,56 @@ class ReceiveService(
       .forEach { value ->
         if (isReceiveOffenderOrphan(value)) {
           val offenderEvent = value.first()
-          if (offenderEvent.offenderReason == "MERGE-EVENT") {
-            offenderEvent.domainReason = "MERGE-EVENT"
+          if (offenderEvent.offenderReason == MERGE_EVENT) {
+            offenderEvent.domainReason = MERGE_EVENT
             offenderEvent.matched = true
+            offenderEvent.comment = "Matched as orphan in matchUpMergeReceives"
           }
         }
       }
+  }
+
+  /**
+   * Looking for 1 unmatched receive and 1 release domain events where there is a booking.moved for that prisoner
+   */
+  fun matchUpBookingMovedReceivesAndReleases(
+    nonMatches: List<MatchingEventPair>,
+    bookingMoveds: List<MatchingEventPair>,
+  ) {
+    bookingMoveds.forEach { matchRow ->
+      val receives = nonMatches.filter {
+        it.nomsNumber == matchRow.nomsNumber &&
+          !it.matched &&
+          it.isDomainOnly() &&
+          it.matchType == MatchType.RECEIVED &&
+          it.domainReason == PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name
+      }
+      val releases = nonMatches.filter {
+        it.nomsNumber == matchRow.relatedNomsNumber &&
+          !it.matched &&
+          it.isDomainOnly() &&
+          it.matchType == MatchType.RELEASED
+      }
+
+      if (receives.size > 1 || releases.size > 1) {
+        log.warn("more than 1 unmatched receive or release domain event found, abandoning matching for $matchRow")
+      } else {
+        if (receives.isNotEmpty()) {
+          with(receives.first()) {
+            matched = true
+            offenderReason = BOOKING_MOVED_EVENT
+            comment = "Matched as orphan in matchUpBookingMovedReceivesAndReleases"
+          }
+        }
+        if (releases.isNotEmpty()) {
+          with(releases.first()) {
+            matched = true
+            offenderReason = BOOKING_MOVED_EVENT
+            comment = "Matched as orphan in matchUpBookingMovedReceivesAndReleases"
+          }
+        }
+      }
+    }
   }
 }
 
@@ -493,7 +653,7 @@ private fun eitherStandardAdmissionOrMerge(
   message: PrisonerReceiveDomainEvent,
   pair: MatchingEventPair,
 ): Boolean = (message.additionalInformation.reason == PrisonerReceiveReason.POST_MERGE_ADMISSION) ==
-  (pair.offenderReason == "MERGE-EVENT")
+  (pair.offenderReason == MERGE_EVENT)
 
 private fun isRelease(previousMovement: BookingMovement): Boolean = previousMovement.movementType == "REL"
 
@@ -503,11 +663,11 @@ private fun isUnmatchedRelease(value: List<MatchingEventPair>): Boolean = value.
 
 private fun isReceiveOffenderOrphan(value: List<MatchingEventPair>): Boolean = value.size == 1 &&
   value.first().matchType == MatchType.RECEIVED &&
-  value.first().domainTime == null
+  value.first().isOffenderOnly()
 
 private fun isReleaseDomainOrphan(value: List<MatchingEventPair>): Boolean = value.size == 1 &&
   value.first().matchType == MatchType.RELEASED &&
-  value.first().offenderTime == null
+  value.first().isDomainOnly()
 
 data class ExternalPrisonerMovementMessage(
   val eventType: String?,
@@ -534,6 +694,18 @@ data class MergeMessage(
   val previousBookingNumber: String? = null,
   val previousOffenderIdDisplay: String? = null,
   val type: String? = null, // should be MERGE
+)
+
+data class BookingMovedMessage(
+  val eventType: String?,
+  val eventDatetime: LocalDateTime? = null,
+  val bookingId: Long? = null,
+  val offenderIdDisplay: String? = null,
+  val offenderId: Long? = null,
+  val previousOffenderIdDisplay: String? = null,
+  val previousOffenderId: Long? = null,
+  val lastAdmissionDate: LocalDateTime? = null,
+  val bookingStartDateTime: LocalDateTime? = null,
 )
 
 data class PrisonerReceiveDomainEvent(
@@ -584,4 +756,18 @@ data class RestrictedPatientRemovedDomainEvent(
 
 data class RestrictedPatientAdditionalInformationEvent(
   val prisonerNumber: String,
+)
+
+data class BookingMovedDomainEvent(
+  val eventType: String?,
+  val occurredAt: OffsetDateTime,
+  val additionalInformation: BookingMovedAdditionalInformationEvent,
+)
+
+data class BookingMovedAdditionalInformationEvent(
+  val bookingId: Long,
+  val movedFromNomsNumber: String,
+  val movedToNomsNumber: String,
+  val bookingStartDateTime: LocalDateTime? = null,
+  val bookingEndDateTime: LocalDateTime? = null,
 )
