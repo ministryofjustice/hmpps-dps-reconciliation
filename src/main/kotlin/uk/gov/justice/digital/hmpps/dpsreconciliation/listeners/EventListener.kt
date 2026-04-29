@@ -32,8 +32,13 @@ class EventListener(
           // Always fires but fiddly to tell insert from update
 
           "BOOKING_NUMBER-CHANGED" -> receiveService.offenderMergeHandler(sqsMessage.Message.fromJson())
-          // matches with a receive event
+          // matches optionally with a receive event
 
+          "OFFENDER_BOOKING-REASSIGNED" -> receiveService.offenderBookingMovedHandler(sqsMessage.Message.fromJson())
+          // matches optionally with a receive and release event
+
+          "prison-offender-events.prisoner.merged" -> null // TODO receiveService.prisonerDomainMergeHandler(sqsMessage.Message.fromJson())
+          "prison-offender-events.prisoner.booking.moved" -> receiveService.prisonerDomainBookingMovedHandler(sqsMessage.Message.fromJson())
           "prisoner-offender-search.prisoner.received" -> receiveService.prisonerDomainReceiveHandler(sqsMessage.Message.fromJson())
           "prisoner-offender-search.prisoner.released" -> receiveService.prisonerDomainReleaseHandler(sqsMessage.Message.fromJson())
 

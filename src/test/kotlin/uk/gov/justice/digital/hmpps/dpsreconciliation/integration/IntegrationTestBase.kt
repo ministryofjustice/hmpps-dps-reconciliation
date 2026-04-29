@@ -123,7 +123,7 @@ internal fun SqsAsyncClient.sendMessage(queueOffenderEventsUrl: String, message:
 ).get()
 
 internal fun HmppsQueue.sendMessage(message: String) = this.sqsClient.sendMessage(this.queueUrl, message = message)
-internal fun HmppsQueue.countMessagesOnQueue(message: String) = this.sqsClient.countAllMessagesOnQueue(this.queueUrl)
+internal fun HmppsQueue.countMessagesOnQueue() = this.sqsClient.countAllMessagesOnQueue(this.queueUrl)
 
 internal fun SqsAsyncClient.waitForMessageCountOnQueue(queueUrl: String, messageCount: Int) = await untilCallTo {
   countAllMessagesOnQueue(queueUrl).get()
@@ -164,6 +164,11 @@ internal fun validOffenderMergeMessage(offenderNo: String, bookingId: Long, even
   message = """{\"eventType\":\"$eventType\",\"eventDatetime\":\"2025-05-13T15:38:56\",\"bookingId\":$bookingId,\"offenderIdDisplay\":\"$offenderNo\",\"offenderId\":\"5383902\",\"type\":\"MERGE\",\"nomisEventType\":\"BOOK_UPD_OASYS\",\"previousOffenderIdDisplay\":\"A9220FG\",\"previousBookingNumber\":\"V24071\"}""",
 )
 
+internal fun validOffenderBookingMovedMessage(previousOffenderIdDisplay: String, offenderIdDisplay: String) = validMessage(
+  "OFFENDER_BOOKING-REASSIGNED",
+  """{\"eventType\":\"OFFENDER_BOOKING-REASSIGNED\", \"eventDatetime\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"bookingId\":3048348,\"offenderIdDisplay\":\"$offenderIdDisplay\",\"previousOffenderIdDisplay\":\"$previousOffenderIdDisplay\",\"bookingStartDateTime\":\"2025-04-25T17:16:00\"}""",
+)
+
 internal fun validMessage(eventType: String, message: String) =
   """
   {
@@ -196,4 +201,9 @@ internal fun validDomainReleaseMessage(prisonerNumber: String, reason: String = 
 internal fun validDomainRPRemovedMessage(prisonerNumber: String) = validMessage(
   "restricted-patients.patient.removed",
   """{\"eventType\":\"restricted-patients.patient.removed\", \"description\": \"some desc\", \"occurredAt\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"additionalInformation\": {\"prisonerNumber\":\"$prisonerNumber\"}}""",
+)
+
+internal fun validDomainBookingMovedMessage(movedFromNomsNumber: String, movedToNomsNumber: String) = validMessage(
+  "prison-offender-events.prisoner.booking.moved",
+  """{\"eventType\":\"prison-offender-events.prisoner.booking.moved\", \"description\": \"desc\", \"occurredAt\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"additionalInformation\":{\"bookingId\":\"3048348\",\"movedToNomsNumber\":\"$movedToNomsNumber\",\"movedFromNomsNumber\":\"$movedFromNomsNumber\",\"bookingStartDateTime\":\"2025-04-25T17:16:00\"}}""",
 )
