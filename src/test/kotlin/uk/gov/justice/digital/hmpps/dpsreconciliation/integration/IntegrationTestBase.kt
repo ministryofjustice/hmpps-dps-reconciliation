@@ -166,7 +166,7 @@ internal fun validOffenderMergeMessage(offenderNo: String, bookingId: Long, even
 
 internal fun validOffenderBookingMovedMessage(previousOffenderIdDisplay: String, offenderIdDisplay: String) = validMessage(
   "OFFENDER_BOOKING-REASSIGNED",
-  """{\"eventType\":\"OFFENDER_BOOKING-REASSIGNED\", \"eventDatetime\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"bookingId\":3048348,\"offenderIdDisplay\":\"$offenderIdDisplay\",\"previousOffenderIdDisplay\":\"$previousOffenderIdDisplay\",\"bookingStartDateTime\":\"2025-04-25T17:16:00\"}""",
+  """{\"eventType\":\"OFFENDER_BOOKING-REASSIGNED\", \"eventDatetime\":\"$TEST_OCCURRED_AT_OFFSET_TIME\", \"bookingId\":3048348,\"offenderIdDisplay\":\"$offenderIdDisplay\",\"previousOffenderIdDisplay\":\"$previousOffenderIdDisplay\",\"bookingStartDateTime\":\"2025-04-25T17:16:00\",\"lastAdmissionDate\":\"2025-02-15\" }""",
 )
 
 internal fun validMessage(eventType: String, message: String) =
