@@ -618,8 +618,7 @@ class ReceiveService(
         it.nomsNumber == matchRow.nomsNumber &&
           !it.matched &&
           it.isDomainOnly() &&
-          it.matchType == MatchType.RECEIVED &&
-          it.domainReason == PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name
+          it.matchType == MatchType.RECEIVED
       }
       val releases = nonMatches.filter {
         it.nomsNumber == matchRow.relatedNomsNumber &&
@@ -635,6 +634,9 @@ class ReceiveService(
           with(receives.first()) {
             matched = true
             offenderReason = BOOKING_MOVED_EVENT
+            offenderBookingId = matchRow.offenderBookingId
+            offenderTime = LocalDateTime.now()
+            relatedNomsNumber = matchRow.relatedNomsNumber
             comment = "Matched as orphan in matchUpBookingMovedReceivesAndReleases"
           }
         }
@@ -642,6 +644,9 @@ class ReceiveService(
           with(releases.first()) {
             matched = true
             offenderReason = BOOKING_MOVED_EVENT
+            offenderBookingId = matchRow.offenderBookingId
+            offenderTime = LocalDateTime.now()
+            relatedNomsNumber = matchRow.nomsNumber
             comment = "Matched as orphan in matchUpBookingMovedReceivesAndReleases"
           }
         }
