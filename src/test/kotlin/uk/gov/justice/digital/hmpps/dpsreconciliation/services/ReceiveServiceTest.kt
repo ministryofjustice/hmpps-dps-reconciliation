@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.dpsreconciliation.services
 
 import com.microsoft.applicationinsights.TelemetryClient
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -11,9 +12,11 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.BOOKING_MOVED_EVENT
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 private const val NOMS_NUMBER = "A1234AA"
 private const val RELATED_PRISONER = "B2345BB"
+private const val BOOKING_ID = 1234567L
 
 class ReceiveServiceTest {
   val prisonApi: PrisonApi = mock()
@@ -55,7 +58,7 @@ class ReceiveServiceTest {
       val receivedEvent = MatchingEventPair(
         matchType = MatchType.RECEIVED,
         nomsNumber = NOMS_NUMBER,
-        domainReason = PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name,
+        domainReason = PrisonerReceiveReason.NEW_ADMISSION.name,
         domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
         createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
         matched = false,
@@ -84,7 +87,7 @@ class ReceiveServiceTest {
             relatedNomsNumber = RELATED_PRISONER,
             domainReason = BOOKING_MOVED_EVENT,
             domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-            offenderBookingId = 1234567L,
+            offenderBookingId = BOOKING_ID,
             offenderReason = BOOKING_MOVED_EVENT,
             offenderTime = LocalDateTime.parse("2026-04-01T12:00:00"),
 //          previousOffenderReason = xxxx,
@@ -99,7 +102,7 @@ class ReceiveServiceTest {
             relatedNomsNumber = "OTHER2",
             domainReason = BOOKING_MOVED_EVENT,
             domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-            offenderBookingId = 1234567L,
+            offenderBookingId = 1234569L,
             offenderReason = BOOKING_MOVED_EVENT,
             offenderTime = LocalDateTime.parse("2026-04-01T12:00:00"),
             createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
@@ -110,8 +113,16 @@ class ReceiveServiceTest {
 
       assertThat(receivedEvent.matched).isTrue()
       assertThat(receivedEvent.offenderReason).isEqualTo(BOOKING_MOVED_EVENT)
+      assertThat(receivedEvent.offenderBookingId).isEqualTo(BOOKING_ID)
+      assertThat(receivedEvent.offenderTime).isCloseTo(LocalDateTime.now(), within(10, ChronoUnit.SECONDS))
+      assertThat(receivedEvent.relatedNomsNumber).isEqualTo(RELATED_PRISONER)
+
       assertThat(releasedEvent.matched).isTrue()
       assertThat(releasedEvent.offenderReason).isEqualTo(BOOKING_MOVED_EVENT)
+      assertThat(releasedEvent.offenderBookingId).isEqualTo(BOOKING_ID)
+      assertThat(releasedEvent.offenderTime).isCloseTo(LocalDateTime.now(), within(10, ChronoUnit.SECONDS))
+      assertThat(releasedEvent.relatedNomsNumber).isEqualTo(NOMS_NUMBER)
+
       assertThat(notDomainOnly.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
       assertThat(alreadyMatched.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
       assertThat(otherPrisoner.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
@@ -140,7 +151,7 @@ class ReceiveServiceTest {
             relatedNomsNumber = RELATED_PRISONER,
             domainReason = BOOKING_MOVED_EVENT,
             domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-            offenderBookingId = 1234567L,
+            offenderBookingId = BOOKING_ID,
             offenderReason = BOOKING_MOVED_EVENT,
             offenderTime = LocalDateTime.parse("2026-04-01T12:00:00"),
             createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
@@ -176,7 +187,7 @@ class ReceiveServiceTest {
             relatedNomsNumber = RELATED_PRISONER,
             domainReason = BOOKING_MOVED_EVENT,
             domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-            offenderBookingId = 1234567L,
+            offenderBookingId = BOOKING_ID,
             offenderReason = BOOKING_MOVED_EVENT,
             offenderTime = LocalDateTime.parse("2026-04-01T12:00:00"),
             createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
