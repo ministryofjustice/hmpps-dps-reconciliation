@@ -35,7 +35,7 @@ class ReceiveServiceTest {
         nomsNumber = NOMS_NUMBER,
         domainReason = PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name,
         domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-        createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
+        createdDate = LocalDateTime.parse("2026-04-01T12:00:01"),
         offenderTime = LocalDateTime.parse("2026-04-01T12:00:00"),
         matched = false,
       )
@@ -44,15 +44,23 @@ class ReceiveServiceTest {
         nomsNumber = NOMS_NUMBER,
         domainReason = PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name,
         domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-        createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
+        createdDate = LocalDateTime.parse("2026-04-01T12:00:01"),
         matched = true,
+      )
+      val tooLate = MatchingEventPair(
+        matchType = MatchType.RECEIVED,
+        nomsNumber = NOMS_NUMBER,
+        domainReason = PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name,
+        domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
+        createdDate = LocalDateTime.parse("2026-04-01T12:00:20"),
+        matched = false,
       )
       val otherPrisoner = MatchingEventPair(
         matchType = MatchType.RECEIVED,
         nomsNumber = "SOME-OTHER",
         domainReason = PrisonerReceiveReason.READMISSION_SWITCH_BOOKING.name,
         domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-        createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
+        createdDate = LocalDateTime.parse("2026-04-01T12:00:01"),
         matched = false,
       )
       val receivedEvent = MatchingEventPair(
@@ -60,7 +68,7 @@ class ReceiveServiceTest {
         nomsNumber = NOMS_NUMBER,
         domainReason = PrisonerReceiveReason.NEW_ADMISSION.name,
         domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-        createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
+        createdDate = LocalDateTime.parse("2026-04-01T12:00:01"),
         matched = false,
       )
       val releasedEvent = MatchingEventPair(
@@ -68,7 +76,7 @@ class ReceiveServiceTest {
         nomsNumber = RELATED_PRISONER,
         domainReason = PrisonerReleaseReason.RELEASED.name,
         domainTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-        createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
+        createdDate = LocalDateTime.parse("2026-04-01T12:00:01"),
         matched = false,
       )
 
@@ -76,11 +84,12 @@ class ReceiveServiceTest {
         nonMatches = listOf(
           notDomainOnly,
           alreadyMatched,
+          tooLate,
           otherPrisoner,
           receivedEvent,
           releasedEvent,
         ),
-        bookingMoveds = listOf(
+        bookingMovedEvents = listOf(
           MatchingEventPair(
             matchType = MatchType.RECEIVED,
             nomsNumber = NOMS_NUMBER,
@@ -90,9 +99,6 @@ class ReceiveServiceTest {
             offenderBookingId = BOOKING_ID,
             offenderReason = BOOKING_MOVED_EVENT,
             offenderTime = LocalDateTime.parse("2026-04-01T12:00:00"),
-//          previousOffenderReason = xxxx,
-//          previousOffenderTime = xxxx,
-//          previousOffenderDirection = xxxx,
             createdDate = LocalDateTime.parse("2026-04-01T12:00:00"),
             matched = true,
           ),
@@ -125,6 +131,7 @@ class ReceiveServiceTest {
 
       assertThat(notDomainOnly.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
       assertThat(alreadyMatched.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
+      assertThat(tooLate.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
       assertThat(otherPrisoner.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
     }
 
@@ -144,7 +151,7 @@ class ReceiveServiceTest {
           receivedEvent,
           receivedEvent,
         ),
-        bookingMoveds = listOf(
+        bookingMovedEvents = listOf(
           MatchingEventPair(
             matchType = MatchType.RECEIVED,
             nomsNumber = NOMS_NUMBER,
@@ -180,7 +187,7 @@ class ReceiveServiceTest {
           releasedEvent,
           releasedEvent,
         ),
-        bookingMoveds = listOf(
+        bookingMovedEvents = listOf(
           MatchingEventPair(
             matchType = MatchType.RECEIVED,
             nomsNumber = NOMS_NUMBER,

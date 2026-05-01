@@ -608,23 +608,28 @@ class ReceiveService(
 
   /**
    * Looking for 1 unmatched receive and 1 release domain events where there is a booking.moved for that prisoner
+   * These always seem to occur within a second or 2 of the booking.moved event
    */
   fun matchUpBookingMovedReceivesAndReleases(
     nonMatches: List<MatchingEventPair>,
-    bookingMoveds: List<MatchingEventPair>,
+    bookingMovedEvents: List<MatchingEventPair>,
   ) {
-    bookingMoveds.forEach { matchRow ->
+    fun LocalDateTime.isInRangeOf(rangeBase: LocalDateTime) = isAfter(rangeBase) && isBefore(rangeBase.plusSeconds(10))
+
+    bookingMovedEvents.forEach { matchRow ->
       val receives = nonMatches.filter {
         it.nomsNumber == matchRow.nomsNumber &&
           !it.matched &&
           it.isDomainOnly() &&
-          it.matchType == MatchType.RECEIVED
+          it.matchType == MatchType.RECEIVED &&
+          it.createdDate.isInRangeOf(matchRow.createdDate)
       }
       val releases = nonMatches.filter {
         it.nomsNumber == matchRow.relatedNomsNumber &&
           !it.matched &&
           it.isDomainOnly() &&
-          it.matchType == MatchType.RELEASED
+          it.matchType == MatchType.RELEASED &&
+          it.createdDate.isInRangeOf(matchRow.createdDate)
       }
 
       if (receives.size > 1 || releases.size > 1) {
