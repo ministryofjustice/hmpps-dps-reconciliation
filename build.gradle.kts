@@ -1,22 +1,22 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.2.2"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.2.4"
   kotlin("plugin.spring") version "2.3.21"
   kotlin("plugin.jpa") version "2.3.21"
 }
 
 dependencies {
-  implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:2.1.1")
+  implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:2.2.0")
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.boot:spring-boot-starter-webclient")
   implementation("org.springframework.boot:spring-boot-starter-webflux")
-  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.3.1")
+  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.3.2")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
   runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
-  runtimeOnly("org.postgresql:postgresql")
+  runtimeOnly("org.postgresql:postgresql:42.7.11")
   runtimeOnly("org.flywaydb:flyway-database-postgresql")
   implementation("io.opentelemetry:opentelemetry-extension-kotlin:1.60.1")
   // Needs to match this version https://github.com/microsoft/ApplicationInsights-Java/blob/<version>/dependencyManagement/build.gradle.kts#L16
@@ -31,7 +31,7 @@ dependencies {
   implementation("io.micrometer:micrometer-registry-azure-monitor:1.16.5")
   implementation("com.microsoft.azure:applicationinsights-$appinsightsCore")
 
-  testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:2.1.1")
+  testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:2.2.0")
   testImplementation("org.springframework.boot:spring-boot-starter-webclient-test")
   testImplementation("org.springframework.boot:spring-boot-starter-webflux-test")
 
