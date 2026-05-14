@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.kotlin.verifyNoInteractions
 import tools.jackson.databind.json.JsonMapper
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchingEventPair
@@ -202,9 +203,25 @@ class ReceiveServiceTest {
           ),
         ),
       )
-
       assertThat(releasedEvent.matched).isFalse()
       assertThat(releasedEvent.offenderReason).isNotEqualTo(BOOKING_MOVED_EVENT)
+    }
+
+    @Test
+    fun `move between aliases of same prisoner is ignored`() {
+      service.offenderBookingMovedHandler(
+        BookingMovedMessage(
+          eventType = "booking.moved",
+          eventDatetime = LocalDateTime.parse("2026-04-01T12:00:00"),
+          bookingId = BOOKING_ID,
+          offenderIdDisplay = NOMS_NUMBER,
+          offenderId = 10001,
+          previousOffenderIdDisplay = NOMS_NUMBER,
+          previousOffenderId = 10002,
+        ),
+      )
+
+      verifyNoInteractions(repository, prisonApi, telemetryClient)
     }
   }
 }

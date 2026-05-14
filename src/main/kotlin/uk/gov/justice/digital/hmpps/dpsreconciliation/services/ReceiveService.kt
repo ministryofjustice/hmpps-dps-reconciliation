@@ -212,51 +212,53 @@ class ReceiveService(
   }
 
   fun offenderBookingMovedHandler(message: BookingMovedMessage) {
-    log.debug("offenderBookingMovedHandler {}", message)
-
-    var matchOutcome: String
-    val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
-      message.offenderIdDisplay!!,
-      MatchType.RECEIVED,
-      LocalDateTime.now().minusHours(2),
-      // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
-      false,
-    ).filter {
-      it.domainReason == BOOKING_MOVED_EVENT
-    }
-    if (existing.isNotEmpty()) {
-      if (existing.size == 1) {
-        matchOutcome = "matched in offenderBookingMovedHandler"
+    // We don't care when the booking only moves between aliases of the same prisoner
+    if (message.offenderIdDisplay != message.previousOffenderIdDisplay) {
+      log.debug("offenderBookingMovedHandler {}", message)
+      var matchOutcome: String
+      val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndOffenderTimeIsNullAndMatchedOrderByIdAsc(
+        message.offenderIdDisplay!!,
+        MatchType.RECEIVED,
+        LocalDateTime.now().minusHours(2),
+        // The domain event will normally arrive after the nomis event, so I'm expecting this to draw a blank
+        false,
+      ).filter {
+        it.domainReason == BOOKING_MOVED_EVENT
+      }
+      if (existing.isNotEmpty()) {
+        if (existing.size == 1) {
+          matchOutcome = "matched in offenderBookingMovedHandler"
+        } else {
+          log.warn("offenderBookingMovedHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
+          matchOutcome = "multiple: ${existing.size} in offenderBookingMovedHandler"
+        }
+        with(existing[0]) {
+          offenderReason = BOOKING_MOVED_EVENT
+          offenderTime = message.eventDatetime
+          offenderBookingId = message.bookingId
+          matched = true
+          comment = "matchOutcome = $matchOutcome"
+        }
       } else {
-        log.warn("offenderBookingMovedHandler(): Unexpected multiple with ${existing.size} matches: {}", existing)
-        matchOutcome = "multiple: ${existing.size} in offenderBookingMovedHandler"
+        repository.save(
+          MatchingEventPair(
+            matchType = MatchType.RECEIVED,
+            nomsNumber = message.offenderIdDisplay,
+            offenderBookingId = message.bookingId,
+            offenderReason = BOOKING_MOVED_EVENT,
+            offenderTime = message.eventDatetime,
+            relatedNomsNumber = message.previousOffenderIdDisplay,
+            comment = "saved in offenderBookingMovedHandler",
+          ),
+        )
+        matchOutcome = "saved in offenderBookingMovedHandler"
       }
-      with(existing[0]) {
-        offenderReason = BOOKING_MOVED_EVENT
-        offenderTime = message.eventDatetime
-        offenderBookingId = message.bookingId
-        matched = true
-        comment = "matchOutcome = $matchOutcome"
-      }
-    } else {
-      repository.save(
-        MatchingEventPair(
-          matchType = MatchType.RECEIVED,
-          nomsNumber = message.offenderIdDisplay,
-          offenderBookingId = message.bookingId,
-          offenderReason = BOOKING_MOVED_EVENT,
-          offenderTime = message.eventDatetime,
-          relatedNomsNumber = message.previousOffenderIdDisplay,
-          comment = "saved in offenderBookingMovedHandler",
-        ),
+      telemetryClient.trackEvent(
+        "booking-moved-offender-event",
+        jsonMapper.convertValue<Map<String, String>>(message) + mapOf("matchOutcome" to matchOutcome),
       )
-      matchOutcome = "saved in offenderBookingMovedHandler"
+      log.debug("offenderBookingMovedHandler EXIT matchOutcome={}", matchOutcome)
     }
-    telemetryClient.trackEvent(
-      "booking-moved-offender-event",
-      jsonMapper.convertValue<Map<String, String>>(message) + mapOf("matchOutcome" to matchOutcome),
-    )
-    log.debug("offenderBookingMovedHandler EXIT matchOutcome={}", matchOutcome)
   }
 
   fun purgeOldMatchedRecords() {
