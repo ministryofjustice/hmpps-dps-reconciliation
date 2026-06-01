@@ -54,8 +54,10 @@ Prisoner returns from hospital to prison; note the REL is **optional**:
 
 1. There is a bug in Nomis where an offender is readmitted on an old booking, and
 the seq of this booking is not set to '1'. prisoner-search wrongly gets stale data from the other booking and fails
-to detect the movement and does not raise an event. This is not a race condition, it can persist for minutes e.g. A5024DJ @ 28 nov 2025 08:24
-1. A prisoner can be released twice, i.e. have duplicate REL movements, with just one release domain event e.g. A5660AN @ Nov 25 10:30
+to detect the movement and does not raise an event. This is not a race condition, it can persist for minutes e.g. A5024DJ @ 28 nov 2025 08:24. Also see
+   https://mojdt.slack.com/archives/C02T3S6QEVC/p1779792699135209?thread_ts=1779460855.015629&cid=C02T3S6QEVC
+1. A prisoner can be released twice, i.e. have duplicate REL movements, with just one release domain event e.g. A5660AN @ Nov 25 2025 10:30 or A6470CF @ 27 may 2026 at 09:00.
+This can happen because 2 different users can release the same prisoner at the same time.
 1. A rapid (within minutes) double merge may be related to only one domain event (e.g. an ADM). Also orphan events would not be recognised if the survivor is the same prisoner for both merges.
 1. A booking.moved event normally does not cause any movements, but it can cause a domain receive, or a release + receive, but with no external movement records.
 The receive event should be an READMISSION_SWITCH_BOOKING but currently (Nov 2025) due to SDIT-3065, may not be.
@@ -68,6 +70,8 @@ This reason is pre-populated as TRNCRT or TRNTAP in P-Nomis but the user can cha
 1. add a movement with a slightly earlier movement datetime than the previous movement, possibly after a merge which has also caused movements to be out of sequence in the sense that the sequence numbers are 
 not totally in the same order as the movement datetimes. This fools the reconciliation into e.g. ignoring an ADM as the previous by date is not a REL (though by sequence it is).
 1. Receive an offender on multiple new bookings at the same time, e.g. A3243AT at 14-NOV-2025 23:46
+1. Release a prisoner to, and then from, a secure hospital in one go. i.e. where the release to the hospital should have been entered earlier but was not.
+In this case only one offender event is raised, not 2.
 
 # Cronjob
 
