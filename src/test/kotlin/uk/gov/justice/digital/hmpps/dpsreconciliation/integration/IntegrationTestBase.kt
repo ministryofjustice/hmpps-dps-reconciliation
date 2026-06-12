@@ -27,6 +27,8 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.Hmpps
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension.Companion.prisonApi
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonerSearchApiExtension
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonerSearchApiExtension.Companion.prisonerSearchApi
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MatchingEventPairRepository
 import uk.gov.justice.hmpps.sqs.HmppsQueue
 import uk.gov.justice.hmpps.sqs.HmppsQueueService
@@ -39,7 +41,7 @@ import java.util.concurrent.TimeUnit
 
 internal const val TEST_OCCURRED_AT_OFFSET_TIME = "2025-05-13T15:38:48.0Z"
 
-@ExtendWith(HmppsAuthApiExtension::class, PrisonApiExtension::class)
+@ExtendWith(HmppsAuthApiExtension::class, PrisonApiExtension::class, PrisonerSearchApiExtension::class)
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ActiveProfiles("test")
 @AutoConfigureWebTestClient
@@ -86,6 +88,7 @@ abstract class IntegrationTestBase {
   protected fun stubPingWithResponse(status: Int) {
     hmppsAuth.stubHealthPing(status)
     prisonApi.stubHealthPing(status)
+    prisonerSearchApi.stubHealthPing(status)
   }
 
   companion object {

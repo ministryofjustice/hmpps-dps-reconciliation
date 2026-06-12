@@ -4,12 +4,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.groups.Tuple
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyMap
 import org.mockito.kotlin.check
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
+import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -22,6 +24,7 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderAdmissionMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderReleaseMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension.Companion.prisonApi
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonerSearchApiExtension.Companion.prisonerSearchApi
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveDomainEvent
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.PrisonerReceiveReason
@@ -32,15 +35,21 @@ import java.time.OffsetDateTime
 
 class DomainEventListenerIntTest : IntegrationTestBase() {
 
+  val prisonerNumber = "A7089FD"
+
   @MockitoSpyBean
   lateinit var receiveServiceSpyBean: ReceiveService
+
+  @BeforeEach
+  fun init() {
+    prisonApi.stubGetPrisoner(prisonerNumber)
+    prisonerSearchApi.stubGetPrisoner(prisonerNumber)
+  }
 
   @Nested
   inner class Received {
     @Test
     fun `will process a prisoner received event`() {
-      val prisonerNumber = "A7089FD"
-
       sendMessage(validDomainReceiveMessage(prisonerNumber))
 
       await untilAsserted {
@@ -85,9 +94,50 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `will match a previous external movement event`() {
-      val prisonerNumber = "A7089FD"
+    fun `will detect stale prisoner search data`() {
+      prisonerSearchApi.stubGetPrisoner(prisonerNumber, "OLD_VALUE")
 
+      sendMessage(validDomainReceiveMessage(prisonerNumber))
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("domain-event"),
+          anyMap(),
+          isNull(),
+        )
+      }
+
+      verify(telemetryClient).trackEvent(
+        eq("prisoner-search-stale"),
+        check {
+          assertThat(it["prisoner-search"]).contains("OLD_VALUE")
+          assertThat(it["nomis"]).contains("ADM")
+        },
+        isNull(),
+      )
+    }
+
+    @Test
+    fun `will not report when prisoner search data is not stale`() {
+      sendMessage(validDomainReceiveMessage(prisonerNumber))
+
+      await untilAsserted {
+        verify(telemetryClient).trackEvent(
+          eq("domain-event"),
+          anyMap(),
+          isNull(),
+        )
+      }
+
+      verify(telemetryClient, never()).trackEvent(
+        eq("prisoner-search-stale"),
+        anyMap(),
+        isNull(),
+      )
+    }
+
+    @Test
+    fun `will match a previous external movement event`() {
       prisonApi.stubGetMovementsForBooking(
         101,
         """
@@ -151,8 +201,6 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
 
     @Test
     fun `will match when there are multiple external movement events`() {
-      val prisonerNumber = "A7089FD"
-
       prisonApi.stubGetMovementsForBooking(
         101,
         """
@@ -226,8 +274,6 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
   inner class Released {
     @Test
     fun `will match a previous external movement event`() {
-      val prisonerNumber = "A7089FD"
-
       prisonApi.stubGetMovementsForBooking(
         101,
         """
@@ -297,8 +343,6 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
 
     @Test
     fun `will match when there are multiple external movement events`() {
-      val prisonerNumber = "A7089FD"
-
       prisonApi.stubGetMovementsForBooking(
         101,
         """
@@ -373,8 +417,6 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
   inner class RPRemoved {
     @Test
     fun `will match a previous release external movement event`() {
-      val prisonerNumber = "A7089FD"
-
       prisonApi.stubGetMovementsForBooking(
         101,
         """
@@ -455,7 +497,6 @@ class DomainEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `RP released from hospital to prison then released`() {
       val bookingId = 1234567L
-      val prisonerNumber = "A1234ZZ"
 
       prisonApi.stubGetMovementsForBooking(
         bookingId,

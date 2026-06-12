@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.Movement
 import java.time.LocalDateTime
 
@@ -22,6 +23,13 @@ class PrisonApi(@Qualifier("prisonApiWebClient") private val webClient: WebClien
     .retrieve()
     .bodyToMono(object : ParameterizedTypeReference<List<BookingMovement>>() {})
     .block()!!
+
+  fun getPrisoner(offenderNo: String): PrisonerSearchDetails = webClient
+    .get()
+    .uri("/api/prisoner-search/offenders/{offenderNo}", offenderNo)
+    .retrieve()
+    .bodyToMono<PrisonerSearchDetails>()
+    .block()!!
 }
 
 data class BookingMovement(
@@ -34,4 +42,17 @@ data class BookingMovement(
   val movementReasonCode: String? = null,
   val createdDateTime: LocalDateTime? = null,
   val modifiedDateTime: LocalDateTime? = null,
+)
+
+/**
+ * Copied from prison-api. Just a subset of fields available.
+ */
+data class PrisonerSearchDetails(
+  val offenderNo: String,
+  val bookingId: Long? = null,
+  val status: String? = null,
+  val lastMovementTypeCode: String? = null,
+  val lastMovementReasonCode: String? = null,
+  val agencyId: String? = null,
+  val lastPrisonId: String? = null,
 )

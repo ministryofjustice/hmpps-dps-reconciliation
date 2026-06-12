@@ -11,6 +11,9 @@ hmpps-auth:
 prison-api:
   url: "http://localhost:8091"
 
+prisoner-search-api:
+  url: "http://localhost:8092"
+
   client:
     id: prison-api
     secret: clientsecret
