@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.groups.Tuple
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyMap
@@ -23,6 +24,7 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderA
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderMergeMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.validOffenderReleaseMessage
 import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonApiExtension.Companion.prisonApi
+import uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock.PrisonerSearchApiExtension.Companion.prisonerSearchApi
 import uk.gov.justice.digital.hmpps.dpsreconciliation.model.MatchType
 import uk.gov.justice.digital.hmpps.dpsreconciliation.repository.MERGE_EVENT
 import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ExternalPrisonerMovementMessage
@@ -30,16 +32,22 @@ import uk.gov.justice.digital.hmpps.dpsreconciliation.services.ReceiveService
 import java.time.LocalDateTime
 
 class OffenderEventListenerIntTest : IntegrationTestBase() {
+  val offenderNo = "A1234AA"
 
   @MockitoSpyBean
   lateinit var receiveServiceSpyBean: ReceiveService
+
+  @BeforeEach
+  fun init() {
+    prisonApi.stubGetPrisoner(offenderNo)
+    prisonerSearchApi.stubGetPrisoner(offenderNo)
+  }
 
   @Nested
   inner class Received {
     @Test
     fun `will process an offender event message`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -131,7 +139,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will not process an ADM event where there is a previous movement`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -181,7 +188,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will match a previous domain receive event message`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -254,7 +260,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will not process a movement update`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -287,7 +292,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will not process a movement deletion`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -327,7 +331,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will process an offender event message`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -419,7 +422,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will match a previous domain release event message`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       prisonApi.stubGetMovementsForBooking(
         12345L,
@@ -496,7 +498,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will process a merge event message`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       awsSqsReconciliationClient.sendMessage(
         SendMessageRequest.builder().queueUrl(reconciliationUrl)
@@ -541,7 +542,6 @@ class OffenderEventListenerIntTest : IntegrationTestBase() {
     @Test
     fun `will match a previous domain POST_MERGE_ADMISSION event message`() {
       val bookingId = 12345L
-      val offenderNo = "A1234AA"
 
       awsSqsReconciliationClient.sendMessage(
         SendMessageRequest.builder().queueUrl(reconciliationUrl)

@@ -1,0 +1,69 @@
+package uk.gov.justice.digital.hmpps.dpsreconciliation.integration.wiremock
+
+import com.github.tomakehurst.wiremock.WireMockServer
+import com.github.tomakehurst.wiremock.client.WireMock.aResponse
+import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.okJson
+import org.junit.jupiter.api.extension.AfterAllCallback
+import org.junit.jupiter.api.extension.BeforeAllCallback
+import org.junit.jupiter.api.extension.BeforeEachCallback
+import org.junit.jupiter.api.extension.ExtensionContext
+
+class PrisonerSearchApiExtension :
+  BeforeAllCallback,
+  AfterAllCallback,
+  BeforeEachCallback {
+  companion object {
+    @JvmField
+    val prisonerSearchApi = PrisonerSearchApiMockServer()
+  }
+
+  override fun beforeAll(context: ExtensionContext) {
+    prisonerSearchApi.start()
+  }
+
+  override fun beforeEach(context: ExtensionContext) {
+    prisonerSearchApi.resetRequests()
+  }
+
+  override fun afterAll(context: ExtensionContext) {
+    prisonerSearchApi.stop()
+  }
+}
+
+class PrisonerSearchApiMockServer : WireMockServer(WIREMOCK_PORT) {
+  companion object {
+    private const val WIREMOCK_PORT = 8092
+  }
+
+  fun stubHealthPing(status: Int) {
+    stubFor(
+      get("/health/ping").willReturn(
+        aResponse()
+          .withHeader("Content-Type", "application/json")
+          .withBody(if (status == 200) """{"status":"UP"}""" else """{"status":"DOWN"}""")
+          .withStatus(status),
+      ),
+    )
+  }
+
+  fun stubGetPrisoner(prisonerNumber: String, code: String = "ADM") {
+    stubFor(
+      get("/prisoner/$prisonerNumber").willReturn(
+        okJson(
+          """
+          {
+      "prisonerNumber": "$prisonerNumber",
+      "bookingId": 1234567,
+      "status": "ACTIVE IN",
+      "lastMovementTypeCode": "$code",
+      "lastMovementReasonCode": "V",
+      "prisonId": "SYI",
+      "lastPrisonId": "SYI"
+          }
+          """.trimIndent(),
+        ),
+      ),
+    )
+  }
+}

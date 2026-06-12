@@ -81,4 +81,24 @@ class PrisonApiMockServer : WireMockServer(WIREMOCK_PORT) {
   fun stubGetMovementsForBooking(bookingId: Long, response: String) {
     stubFor(get("/api/movements/booking/$bookingId").willReturn(okJson(response)))
   }
+
+  fun stubGetPrisoner(offenderNo: String) {
+    stubFor(
+      get("/api/prisoner-search/offenders/$offenderNo").willReturn(
+        okJson(
+          """
+          {
+      "offenderNo": "$offenderNo",
+      "bookingId": 1234567,
+      "status": "ACTIVE IN",
+      "lastMovementTypeCode": "ADM",
+      "lastMovementReasonCode": "V",
+      "agencyId": "SYI",
+      "lastPrisonId": "SYI"
+          }
+          """.trimIndent(),
+        ),
+      ),
+    )
+  }
 }

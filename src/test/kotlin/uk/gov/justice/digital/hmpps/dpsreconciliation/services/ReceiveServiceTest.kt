@@ -21,11 +21,12 @@ private const val BOOKING_ID = 1234567L
 
 class ReceiveServiceTest {
   val prisonApi: PrisonApi = mock()
+  val prisonerSearchApi: PrisonerSearchApi = mock()
   val telemetryClient: TelemetryClient = mock()
   val repository: MatchingEventPairRepository = mock()
   val jsonMapper: JsonMapper = mock()
 
-  val service: ReceiveService = ReceiveService(prisonApi, telemetryClient, repository, jsonMapper)
+  val service: ReceiveService = ReceiveService(prisonApi, prisonerSearchApi, telemetryClient, repository, jsonMapper)
 
   @Nested
   inner class MatchUpBookingMovedReceivesAndReleases {

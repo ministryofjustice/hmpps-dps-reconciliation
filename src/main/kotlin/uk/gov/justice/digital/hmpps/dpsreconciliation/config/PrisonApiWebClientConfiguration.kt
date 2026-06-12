@@ -10,16 +10,11 @@ import uk.gov.justice.hmpps.kotlin.auth.healthWebClient
 import java.time.Duration
 
 @Configuration
-class WebClientConfiguration(
-  @Value("\${hmpps-auth.url}") val hmppsAuthBaseUri: String,
+class PrisonApiWebClientConfiguration(
   @Value("\${prison-api.url}") val prisonApiBaseUri: String,
   @Value("\${api.health-timeout:2s}") val healthTimeout: Duration,
   @Value("\${api.timeout:20s}") val timeout: Duration,
 ) {
-  @Bean
-  fun hmppsAuthHealthWebClient(builder: WebClient.Builder): WebClient = builder
-    .healthWebClient(hmppsAuthBaseUri, healthTimeout)
-
   @Bean
   fun prisonApiHealthWebClient(builder: WebClient.Builder): WebClient = builder
     .healthWebClient(prisonApiBaseUri, healthTimeout)

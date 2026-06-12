@@ -23,6 +23,7 @@ import java.time.ZoneId
 @Transactional(isolation = Isolation.SERIALIZABLE)
 class ReceiveService(
   val prisonApi: PrisonApi,
+  val prisonerSearchApi: PrisonerSearchApi,
   val telemetryClient: TelemetryClient,
   val repository: MatchingEventPairRepository,
   val jsonMapper: JsonMapper,
@@ -289,6 +290,8 @@ class ReceiveService(
       PrisonerReceiveReason.READMISSION_SWITCH_BOOKING,
       PrisonerReceiveReason.POST_MERGE_ADMISSION, // will match with a merge event, not a movement
       -> {
+        checkIndexMatchesNomis(message.additionalInformation.nomsNumber)
+
         val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
           message.additionalInformation.nomsNumber,
           MatchType.RECEIVED,
@@ -343,6 +346,7 @@ class ReceiveService(
 
   fun prisonerDomainReleaseHandler(message: PrisonerReleaseDomainEvent) {
     log.debug("prisonerDomainReleaseHandler {}", message)
+
     val messageDateTimeLocal = message.occurredAt.atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
     var matchOutcome = ""
 
@@ -350,6 +354,8 @@ class ReceiveService(
       PrisonerReleaseReason.RELEASED,
       PrisonerReleaseReason.RELEASED_TO_HOSPITAL,
       -> {
+        checkIndexMatchesNomis(message.additionalInformation.nomsNumber)
+
         val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
           message.additionalInformation.nomsNumber,
           MatchType.RELEASED,
@@ -467,7 +473,7 @@ class ReceiveService(
     log.debug("prisonerDomainBookingMovedHandler {}", message)
 
     val messageDateTimeLocal = message.occurredAt.atZoneSameInstant(ZoneId.of("Europe/London")).toLocalDateTime()
-    var matchOutcome = ""
+    var matchOutcome: String
 
     val existing = repository.findByNomsNumberAndMatchTypeAndCreatedDateAfterAndDomainTimeIsNullAndMatchedOrderByIdAsc(
       message.additionalInformation.movedToNomsNumber,
@@ -513,6 +519,21 @@ class ReceiveService(
       ) + mapOf("movedFromNomsNumber" to message.additionalInformation.movedFromNomsNumber),
     )
     log.debug("prisonerDomainBookingMovedHandler EXIT matchOutcome={}", matchOutcome)
+  }
+
+  fun checkIndexMatchesNomis(nomsNumber: String) {
+    val prisonerSearch = prisonerSearchApi.getPrisoner(nomsNumber)
+    val nomis = prisonApi.getPrisoner(nomsNumber)
+
+    if (!prisonerSearch.matches(nomis)) {
+      telemetryClient.trackEvent(
+        "prisoner-search-stale",
+        mapOf(
+          "prisoner-search" to prisonerSearch.toString(),
+          "nomis" to nomis.toString(),
+        ),
+      )
+    }
   }
 
   fun batchMatch(startCreatedDate: LocalDateTime, endCreatedDate: LocalDateTime) {
@@ -661,6 +682,14 @@ class ReceiveService(
     }
   }
 }
+
+private fun Prisoner.matches(nomis: PrisonerSearchDetails): Boolean = this.prisonerNumber == nomis.offenderNo &&
+  this.bookingId == nomis.bookingId.toString() &&
+  this.prisonId == nomis.agencyId &&
+  this.status == nomis.status &&
+  this.lastMovementTypeCode == nomis.lastMovementTypeCode &&
+  this.lastMovementReasonCode == nomis.lastMovementReasonCode &&
+  this.lastPrisonId == nomis.lastPrisonId
 
 private fun eitherStandardAdmissionOrMerge(
   message: PrisonerReceiveDomainEvent,
