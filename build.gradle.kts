@@ -18,7 +18,7 @@ dependencies {
   }
 
   runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
-  runtimeOnly("org.postgresql:postgresql:42.7.14")
+  runtimeOnly("org.postgresql:postgresql:42.7.15")
   runtimeOnly("org.flywaydb:flyway-database-postgresql")
   implementation("io.opentelemetry:opentelemetry-extension-kotlin:1.65.0")
   // Needs to match this version https://github.com/microsoft/ApplicationInsights-Java/blob/<version>/dependencyManagement/build.gradle.kts#L16
